@@ -44,17 +44,28 @@ def complex_mm_2(x, y, conj_x=False, conj_y=False):
     :param y: [k, j, complex] (K, N, 2)
     :return:  [i, j, complex] (M, N, 2)
     '''
-    xr = x[:, :, 0]
-    xi = -x[:, :, 1] if conj_x else x[:, :, 1]
+    #xr = x[:, :, 0]
+    #xi = -x[:, :, 1] if conj_x else x[:, :, 1]
 
-    yr = y[:, :, 0]
-    yi = -y[:, :, 1] if conj_y else y[:, :, 1]
+    #yr = y[:, :, 0]
+    #yi = -y[:, :, 1] if conj_y else y[:, :, 1]
 
 
-    zr = torch.mm(xr, yr) - torch.mm(xi, yi)
-    zi = torch.mm(xr, yi) + torch.mm(xi, yr)
+    #zr = torch.mm(xr, yr) - torch.mm(xi, yi)
+    #zi = torch.mm(xr, yi) + torch.mm(xi, yr)
+    x = torch.conj(torch.view_as_complex(x)) if conj_x else torch.view_as_complex(x)
+    y = torch.conj(torch.view_as_complex(y)) if conj_y else torch.view_as_complex(y)
 
-    return torch.stack((zr, zi), 2)
+    #n_numbers = len(x)
+    #for i in range(n_numbers):
+        #z = x[i] * y[i]
+
+    #z = torch.einsum('ij,ij->i', x, y)
+    z = x*y
+    print(f"z shape is {z.shape}")
+    return torch.view_as_real(z)
+
+    #return torch.stack((zr, zi), 2)
 
 def s2_div(x, y, conj_x=False, conj_y=False):
     '''
@@ -169,9 +180,9 @@ def s2_mm_2(x, y, nbatch, nfeature_in, nfeature_out, conj_x=False, conj_y=False)
 
     assert y.size(3) == 2
     assert x.size(3) == 2
-    nbatch = x.size(1)
-    nfeature_in = x.size(2)
-    nfeature_out = y.size(2)
+    #nbatch = x.size(1)
+    #nfeature_in = x.size(2)
+    #nfeature_out = y.size(2)
     #assert y.size(1) == nfeature_in
     nspec = x.size(0)
     #assert y.size(0) == nspec
@@ -190,7 +201,11 @@ def s2_mm_2(x, y, nbatch, nfeature_in, nfeature_out, conj_x=False, conj_y=False)
         Fx = x[begin:begin+size]  # [m, batch,      feature_in,  complex]
         Fy = y[begin:begin+size]  # [m, feature_in, feature_out, complex]
 
-        Fx = Fx.view(L * nbatch, nfeature_in, 2)  # [m * batch, feature_in, complex]
+        #Fx = Fx.view(L * nbatch, nfeature_in, 2)  # [m * batch, feature_in, complex]
+        Fx = Fx.transpose(0, 1)  # [feature_in, m, feature_out, complex]
+        Fx = Fx.contiguous()
+        Fx = Fx.view(nfeature_in, L * nfeature_out, 2)  # [feature_in, m * feature_out, complex]
+
 
         Fy = Fy.transpose(0, 1)  # [feature_in, m, feature_out, complex]
         Fy = Fy.contiguous()
@@ -245,9 +260,11 @@ class S2Deconvolution(Module):
         #zy = s2_mm_inv(z, y, conj_x=False, conj_y=False)  # [l * m * n, batch, feature_out, complex]
         #yy = s2_mm_inv(y, y, conj_x=True, conj_y=False)  # [l * m * n, batch, feature_out, complex]
         #z = s2_div(x, y, conj_y = True)
-        #yy = s2_mm_2(y, y, 1, self.nfeature_in, self.nfeature_out, conj_x = True)
+        yy = s2_mm_2(y, y, 1, self.nfeature_in, self.nfeature_out, conj_x = True)
         #zy = s2_mm(x, y)
         #z = s2_div(zy,yy)
+        #yy = torch.mm(y.transpose(0,1), y)
+        print(f"yy shape: {yy.shape}")
 
         z = s2_mm_2(x, y, 1, self.nfeature_in, self.nfeature_out, conj_x = True)
 

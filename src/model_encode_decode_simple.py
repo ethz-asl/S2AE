@@ -54,22 +54,18 @@ class ModelEncodeDecodeSimple(nn.Module):
         assert len(self.bandwidths) == len(self.features)
         grid_s2 = s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
 
-        self.convolutional = nn.Sequential(
-            S2Convolution(
+        self.convolutional = S2Convolution(
                 nfeature_in  = self.features[0],
                 nfeature_out = self.features[1],
                 b_in  = self.bandwidths[0],
                 b_out = self.bandwidths[1],
                 grid=grid_s2)
-            )
-        self.deconvolutional = nn.Sequential(
-            S2Deconvolution(
+        self.deconvolutional = S2Deconvolution(
                 nfeature_in  = self.features[1],
                 nfeature_out = self.features[0],
                 b_in  = self.bandwidths[1],
                 b_out = self.bandwidths[1],
                 grid=grid_s2)
-            )
 
     def forward(self, x1):
         x_enc = self.convolutional(x1)  # [batch, feature, beta, alpha, gamma]
