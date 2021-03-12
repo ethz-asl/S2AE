@@ -129,5 +129,6 @@ dmypy.json
 .pyre/
 
 # cached computations
-.pkl.gz
-.pkl
+*.pkl.gz
+*.pkl
+cache/
