@@ -5,13 +5,16 @@ class DHGrid:
     def CreateGrid(bw):
         n_grid = 2 * bw
         k = 0;
-        points = np.empty([2, n_grid, n_grid])
+        feature_grid = np.empty([2, n_grid, n_grid])
+        points = np.empty([n_grid*n_grid, 2])
         for i in range(n_grid):
             for j in range(n_grid):
-                points[0, i, j] = (np.pi*(2*i+1))/(4*bw)
-                points[1, i, j] = (2*np.pi*j)/(2*bw);
+                feature_grid[0, i, j] = (np.pi*(2*i+1))/(4*bw)
+                feature_grid[1, i, j] = (2*np.pi*j)/(2*bw);
+                points[k,0]=feature_grid[0, i, j]
+                points[k,1]=feature_grid[1, i, j]
                 k = k + 1;
-        return points
+        return feature_grid, points
 
     @staticmethod
     def ConvertGridToEuclidean(grid):

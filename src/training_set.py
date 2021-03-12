@@ -43,22 +43,18 @@ class TrainingSet(torch.utils.data.Dataset):
         self.is_restoring = restore
         self.test_indices = []
         self.cache = None
-        self.grid = DHGrid.CreateGrid(bw)
+        self.grid,_ = DHGrid.CreateGrid(bw)
         self.anchor_features = []
         self.positive_features = []
         self.negative_features = []
 
     def generateAll(self, datasource):
         self.ds = datasource
-        self.cache = datasource.cache
 
         # Generate features from clouds.
-        if not self.is_restoring:
-            (a, p, n) = self.ds.get_all_cached_clouds()
-        else:
-            (a, p, n) = self.__loadTestSet()
-        a_pcl_features, p_pcl_features, n_pcl_features = self.__genAllCloudFeatures(
-            a, p, n)
+        (a, p, n) = self.ds.get_all_cached_clouds()
+        a_pcl_features, p_pcl_features, n_pcl_features = self.__genAllCloudFeatures(a, p, n)
+        print(f"a features {np.count_nonzero(a_pcl_features)}, p features {np.count_nonzero(p_pcl_features)}, n features {np.count_nonzero(n_pcl_features)},")
 
         # Copy all features to the data structure.
         double_bw = 2 * self.bw
@@ -80,9 +76,8 @@ class TrainingSet(torch.utils.data.Dataset):
             return self.loadFromFeatures(index)
 
     def loadFromDatasource(self, index):
-        if (index >= self.ds.start_cached) and (index < self.ds.end_cached):
-            a, p, n = self.get_and_delete_torch_feature(index)
-            return a, p, n
+        a, p, n = self.get_and_delete_torch_feature(index)
+        return a, p, n
 
         # We reached the end of the current cached batch.
         # Free the current set and cache the next one.

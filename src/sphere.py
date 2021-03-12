@@ -7,10 +7,28 @@ import sys
 from tqdm.auto import tqdm
 
 class Sphere:
-    def __init__(self, point_cloud):
-        self.point_cloud = point_cloud
-        (self.sphere, self.ranges) = self.__projectPointCloudOnSphere(point_cloud)
-        self.intensity = point_cloud[:,3]
+    def __init__(self, point_cloud=None, bw=None, features=None):
+        if point_cloud is not None:
+            self.point_cloud = point_cloud
+            (self.sphere, self.ranges) = self.__projectPointCloudOnSphere(point_cloud)
+            self.intensity = point_cloud[:,3]
+        elif bw is not None and features is not None:
+            self.constructFromFeatures(bw, features)
+
+    def constructFromFeatures(self, bw, features):
+        self.point_cloud = None
+        _, self.sphere = DHGrid.CreateGrid(bw)
+        n_grid = 2 * bw
+        n_points = n_grid*n_grid
+
+        self.ranges = np.empty([n_points, 1])
+        self.intensity = np.empty([n_points, 1])
+        cur_idx = 0
+        for i in range(n_grid):
+            for j in range(n_grid):
+                self.ranges[cur_idx] = features[0, i, j]
+                self.intensity[cur_idx] = features[1, i, j]
+                cur_idx = cur_idx + 1
 
     def getProjectedInCartesian(self):
         return self.__convertSphericalToEuclidean(self.sphere)
@@ -32,9 +50,11 @@ class Sphere:
                 # TODO(lbern): Average over all neighbors
                 for cur_idx in nn_idx:
                     range_value = self.ranges[cur_idx]
-                    range_value = range_value if np.isnan(range_value) else 0
                     intensity = self.intensity[cur_idx]
-                    intensity = intensity if np.isnan(intensity) else 0
+
+                    range_value = range_value if not np.isnan(range_value) else 0
+                    intensity = intensity if not np.isnan(intensity) else 0
+
                     features[0, i, j] = range_value
                     features[1, i, j] = intensity
 
