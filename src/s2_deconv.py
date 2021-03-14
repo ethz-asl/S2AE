@@ -44,30 +44,27 @@ def complex_mm_2(x, y, conj_x=False, conj_y=False):
     :param y: [k, j, complex] (K, N, 2)
     :return:  [i, j, complex] (M, N, 2)
     '''
-    #xr = x[:, :, 0]
-    #xi = -x[:, :, 1] if conj_x else x[:, :, 1]
 
-    #yr = y[:, :, 0]
-    #yi = -y[:, :, 1] if conj_y else y[:, :, 1]
-
-
-    #zr = torch.mm(xr, yr) - torch.mm(xi, yi)
-    #zi = torch.mm(xr, yi) + torch.mm(xi, yr)
-    x = torch.conj(torch.view_as_complex(x)) if conj_x else torch.view_as_complex(x)
     y = torch.conj(torch.view_as_complex(y)) if conj_y else torch.view_as_complex(y)
+    y_abs = y.abs()
+    y_eng = y_abs * y_abs # Hadamard product
+    #print(f"|y|^2 = {y_eng}")
+    y = y / (y_eng + 0.001)
+    #print(f"y = {y}")
 
-    #n_numbers = len(x)
-    #for i in range(n_numbers):
-        #z = x[i] * y[i]
+    y = torch.view_as_real(y)
+    xr = x[:, :, 0]
+    xi = x[:, :, 1]
 
-    #z = torch.einsum('ij,ij->i', x, y)
-    z = x*y
-    print(f"z shape is {z.shape}")
-    return torch.view_as_real(z)
+    yr = y[:, :, 0]
+    yi = y[:, :, 1]
 
-    #return torch.stack((zr, zi), 2)
+    zr = torch.mm(xr, yr) - torch.mm(xi, yi)
+    zi = torch.mm(xr, yi) + torch.mm(xi, yr)
+    return torch.stack((zr, zi), 2)
 
-def s2_div(x, y, conj_x=False, conj_y=False):
+
+def s2_mm_2(x, y, conj_x=False, conj_y=False):
     '''
     :param x: [l * m,     batch,      feature_in,  complex]
     :param y: [l * m,     feature_in, feature_out, complex]
@@ -85,7 +82,7 @@ def s2_div(x, y, conj_x=False, conj_y=False):
     assert y.size(0) == nspec
 
     if x.is_cuda:
-        return foo
+        return _cuda_S2_mm.apply(x, y)
 
     nl = round(nspec**0.5)
 
@@ -99,113 +96,6 @@ def s2_div(x, y, conj_x=False, conj_y=False):
         Fy = y[begin:begin+size]  # [m, feature_in, feature_out, complex]
 
         Fx = Fx.view(L * nbatch, nfeature_in, 2)  # [m * batch, feature_in, complex]
-
-        Fy = Fy.transpose(0, 1)  # [feature_in, m, feature_out, complex]
-        Fy = Fy.contiguous()
-        Fy = Fy.view(nfeature_in, L * nfeature_out, 2)  # [feature_in, m * feature_out, complex]
-
-        Fz = complex_div(Fx, Fy, conj_y=conj_y, conj_x=conj_x)  # [m_x * batch, m_y * feature_out, complex] m_x -> m, m_y -> n
-        Fz = Fz.view(L, nbatch, L, nfeature_out, 2)  # [m, batch, n, feature_out, complex]
-        Fz = Fz.transpose(1, 2)  # [m, n, batch, feature_out, complex]
-        Fz = Fz.contiguous()
-        Fz = Fz.view(L * L, nbatch, nfeature_out, 2)  # [m * n, batch, feature_out, complex]
-
-        Fz_list.append(Fz)
-
-        begin += size
-
-    z = torch.cat(Fz_list, 0)  # [l * m * n, batch, feature_out, complex]
-    return z
-
-def s2_div_2(x, y, nbatch, nfeature_in, nfeature_out, conj_x=False, conj_y=False):
-    '''
-    :param x: [l * m,     batch,      feature_in,  complex]
-    :param y: [l * m,     feature_in, feature_out, complex]
-    :return:  [l * m * n, batch,      feature_out, complex]
-    '''
-    from s2cnn.utils.complex import complex_mm
-
-    assert y.size(3) == 2
-    assert x.size(3) == 2
-    #nbatch = x.size(1)
-    #nfeature_in = x.size(2)
-    #nfeature_out = y.size(2)
-    assert y.size(1) == nfeature_in
-    nspec = x.size(0)
-    assert y.size(0) == nspec
-
-    if x.is_cuda:
-        return _cuda_S2_mm.apply(x, y)
-
-    nl = round(nspec**0.5)
-
-    Fz_list = []
-    begin = 0
-    for l in range(nl):
-        L = 2 * l + 1
-        size = L
-
-        Fx = x[begin:begin+size]  # [m, batch,      feature_in,  complex]
-        Fy = y[begin:begin+size]  # [m, feature_in, feature_out, complex]
-
-        #Fx = Fx.view(L * nbatch, nfeature_in, 2)  # [m * batch, feature_in, complex]
-        Fx = Fx.transpose(1, 2)  # [feature_in, m, feature_out, complex]
-        Fx = Fx.contiguous()
-        Fx = Fx.view(nfeature_in, L * nfeature_out, 2)  # [feature_in, m * feature_out, complex]
-
-        Fy = Fy.transpose(0, 1)  # [feature_in, m, feature_out, complex]
-        Fy = Fy.contiguous()
-        Fy = Fy.view(nfeature_in, L * nfeature_out, 2)  # [feature_in, m * feature_out, complex]
-
-        Fz = complex_mm(Fx, Fy, conj_x=conj_x, conj_y=conj_y)  # [m_x * batch, m_y * feature_out, complex] m_x -> m, m_y -> n
-        Fz = Fz.view(L, nbatch, L, nfeature_out, 2)  # [m, batch, n, feature_out, complex]
-        Fz = Fz.transpose(1, 2)  # [m, n, batch, feature_out, complex]
-        Fz = Fz.contiguous()
-        Fz = Fz.view(L * L, nbatch, nfeature_out, 2)  # [m * n, batch, feature_out, complex]
-
-        Fz_list.append(Fz)
-
-        begin += size
-
-    z = torch.cat(Fz_list, 0)  # [l * m * n, batch, feature_out, complex]
-    return z
-
-def s2_mm_2(x, y, nbatch, nfeature_in, nfeature_out, conj_x=False, conj_y=False):
-    '''
-    :param x: [l * m,     batch,      feature_in,  complex]
-    :param y: [l * m,     feature_in, feature_out, complex]
-    :return:  [l * m * n, batch,      feature_out, complex]
-    '''
-    from s2cnn.utils.complex import complex_mm
-
-    assert y.size(3) == 2
-    assert x.size(3) == 2
-    #nbatch = x.size(1)
-    #nfeature_in = x.size(2)
-    #nfeature_out = y.size(2)
-    #assert y.size(1) == nfeature_in
-    nspec = x.size(0)
-    #assert y.size(0) == nspec
-
-    if x.is_cuda:
-        return _cuda_S2_mm.apply(x, y)
-
-    nl = round(nspec**0.5)
-
-    Fz_list = []
-    begin = 0
-    for l in range(nl):
-        L = 2 * l + 1
-        size = L
-
-        Fx = x[begin:begin+size]  # [m, batch,      feature_in,  complex]
-        Fy = y[begin:begin+size]  # [m, feature_in, feature_out, complex]
-
-        #Fx = Fx.view(L * nbatch, nfeature_in, 2)  # [m * batch, feature_in, complex]
-        Fx = Fx.transpose(0, 1)  # [feature_in, m, feature_out, complex]
-        Fx = Fx.contiguous()
-        Fx = Fx.view(nfeature_in, L * nfeature_out, 2)  # [feature_in, m * feature_out, complex]
-
 
         Fy = Fy.transpose(0, 1)  # [feature_in, m, feature_out, complex]
         Fy = Fy.contiguous()
@@ -260,13 +150,13 @@ class S2Deconvolution(Module):
         #zy = s2_mm_inv(z, y, conj_x=False, conj_y=False)  # [l * m * n, batch, feature_out, complex]
         #yy = s2_mm_inv(y, y, conj_x=True, conj_y=False)  # [l * m * n, batch, feature_out, complex]
         #z = s2_div(x, y, conj_y = True)
-        yy = s2_mm_2(y, y, 1, self.nfeature_in, self.nfeature_out, conj_x = True)
+        #yy = s2_mm_2(y, y, 1,  conj_x = True)
         #zy = s2_mm(x, y)
         #z = s2_div(zy,yy)
         #yy = torch.mm(y.transpose(0,1), y)
-        print(f"yy shape: {yy.shape}")
+        #print(f"yy shape: {yy.shape}")
 
-        z = s2_mm_2(x, y, 1, self.nfeature_in, self.nfeature_out, conj_x = True)
+        z = s2_mm_2(x, y, conj_x = False, conj_y = False)
 
         z = SO3_ifft_real.apply(z)  # [batch, feature_out, beta, alpha, gamma]
         z = z + self.bias

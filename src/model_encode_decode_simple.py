@@ -29,8 +29,12 @@ def so3_integrate(x):
     #x = torch.sum(x, dim=-1).squeeze(-1)  # [..., beta, alpha]
     #x = torch.sum(x, dim=-1).squeeze(-1)  # [..., beta]
 
+    print(f"size of x: {x.size()},  w {w.size()}")
+
     sz = x.size()
     x = x.view(-1, 2 * b)
+    print(f"size of x reshaped {x.size()}")
+
     w = w.view(2 * b, 1)
     x = torch.mm(x, w).squeeze(-1)
     x = x.view(*sz[:-1])
@@ -70,8 +74,9 @@ class ModelEncodeDecodeSimple(nn.Module):
     def forward(self, x1):
         x_enc = self.convolutional(x1)  # [batch, feature, beta, alpha, gamma]
         print(f"encoded x shape is {x_enc.shape}")
-        x_enc = so3_integrate(x_enc)  # [batch, feature]
-        print(f"integrated x shape is {x_enc.shape}")
-        x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
-        x_dec = so3_integrate(x_dec)  # [batch, feature]
-        return x_dec
+        #x_enc = so3_integrate(x_enc)  # [batch, feature]
+        #print(f"integrated x shape is {x_enc.shape}")
+        return x_enc
+        #x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
+        #x_dec = so3_integrate(x_dec)  # [batch, feature]
+        #return x_dec
