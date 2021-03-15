@@ -84,29 +84,44 @@ if __name__ == "__main__":
     print(f"x shape after transform is {x.size()}") # [l*m*n, batch, feature_in, complex]
 
     #X = torch.view_as_complex(x[:, 0, 0,:])
-    X = x.view(x.size(1), x.size(2), x.size(0), 2) # [batch, feature_in, l*m*n, complex]
-    real = X[0,0,:,0]
-    imag = X[0,0,:,1]
+    #X = x.view(x.size(1), x.size(2), x.size(0), 2) # [batch, feature_in, l*m*n, complex]
+    real = x[:,:,:,0]
+    imag = x[:,:,:,1]
 
-    lmn = X.size(-2)
-    shift = lmn // 2 if lmn % 2 == 0 else (lmn + 1) // 2
+    # fftshift
+    lmn = x.size(0)
+    shift = int(np.floor(lmn / 2))
     print(f"real and imag shape are {real.size()} and {imag.size()}")
-    print(f"")
+    print(f"shift is {shift}")
 
     real = torch.roll(real, dims=0, shifts=shift)
     imag = torch.roll(imag, dims=0, shifts=shift)
     X = torch.stack((real, imag), dim=-1)
     print(f"size of shifted is {X.size()}")
 
-    #X = Utils.fftshift(X)
-    #X = Utils.fftshift2(real, imag)
-    #X = torch.cat((real, imag), dim=-1)
-    #F =
-    X_e = torch.view_as_complex(X).abs() ** 2
-    print(f"feature X shape: {X_e.size()}")
-    plt.plot(X_e)
+    F0 = X[:,0,0,:]
+    F1 = X[:,0,1,:]
+    X_e0 = torch.view_as_complex(F0).abs()
+    X_e1 = torch.view_as_complex(F1).abs()
+    print(f"feature X shape: {X_e0.size()}")
+    plt.plot(X_e0)
+    plt.plot(X_e1)
     plt.show()
 
+    # ifftshift
+    shift = int(np.ceil(lmn / 2))
+    real = torch.roll(real, dims=0, shifts=shift)
+    imag = torch.roll(imag, dims=0, shifts=shift)
+    X = torch.stack((real, imag), dim=-1)
+
+    F0 = X[:,0,0,:]
+    F1 = X[:,0,1,:]
+    X_e0 = torch.view_as_complex(F0).abs()
+    X_e1 = torch.view_as_complex(F1).abs()
+    print(f"feature X shape: {X_e0.size()}")
+    plt.plot(X_e0)
+    plt.plot(X_e1)
+    plt.show()
 
     #x = torch.rand(1, 2, 12, 12, 2)  # [..., beta, alpha, complex]
     #z1 = s2_fft(x, b_out=5)
