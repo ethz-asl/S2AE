@@ -23,23 +23,20 @@ class SO3_spectral_pool(torch.autograd.Function):
         '''
         ctx.b_out = b_out
         ctx.b_in = x.size(-1) // 2
-        ctx.low_pass_b_out = ctx.b_out // 2
 
+        # Transform the input to the spherical domain.
+        # Also, shift the DC component to the center.
         x = so3_rfft(x, b_out=ctx.b_out)
+        X, center = Utils.fftshift(x)
 
-        # shift x to center?
-        x = torch.view_as_complex(x)
-        #x = tfft.fftshift(x)
-        #plt.plot(x[:,1,1])
+        # Low-pass filter the signal.
+        ctx.lb = int(center - lhs)
+        ctx.ub = int(center + rhs)
+        X = X[ctx.lb:ctx.ub, :, :, :]
 
-
-
-        #return
-
-    @staticmethod
-    def backward(self, grad_output):  # pylint: disable=W
-        # ifft of grad_output is not necessarily real, therefore we cannot use rifft
-        return so3_ifft(grad_output, for_grad=True, b_out=self.b_in)[..., 0], None
+        # Shift the signals back and perform a inverse transform.
+        X, _ = Utils.ifftshift(X)
+        return SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
 
 class SO3Pooling(Module):
     def __init__(self, nfeature_in, nfeature_out, b_in, b_out, grid):
@@ -65,23 +62,12 @@ class SO3Pooling(Module):
         assert x.size(2) == 2 * self.b_in
         assert x.size(3) == 2 * self.b_in
         assert x.size(4) == 2 * self.b_in
-
-        x = SO3_fft_real.apply(x, self.b_out)  # [l * m * n, batch, feature_in, complex]
-        y = so3_rft(self.kernel * self.scaling, self.b_out, self.grid)  # [l * m * n, feature_in, feature_out, complex]
-        assert x.size(0) == y.size(0)
-        assert x.size(2) == y.size(1)
-        z = so3_mm(x, y)  # [l * m * n, batch, feature_out, complex]
-        assert z.size(0) == x.size(0)
-        assert z.size(1) == x.size(1)
-        assert z.size(2) == y.size(2)
-        z = SO3_ifft_real.apply(z)  # [batch, feature_out, beta, alpha, gamma]
-
-        return z
+        return SO3_spectral_pool.apply(x)
 
 if __name__ == "__main__":
     b_in = 30
-    x = torch.rand(1, 2, 12, 12, 12)  # [batch, feature_in, beta, alpha, gamma]
-    x = SO3_fft_real.apply(x, b_in)
+    x_init = torch.rand(1, 2, 60, 60, 60)  # [batch, feature_in, beta, alpha, gamma]
+    x = SO3_fft_real.apply(x_init, b_in)
     print(f"x shape after transform is {x.size()}") # [l*m*n, batch, feature_in, complex]
 
     X, center = Utils.fftshift(x)
@@ -92,15 +78,19 @@ if __name__ == "__main__":
     print(f"feature X shape: {X_e0.size()}")
     plt.plot(X_e0)
     plt.plot(X_e1)
-    plt.show()
+    #plt.show()
 
     # Low-pass filter the signal.
+    '''
     print(f"X shape before LP is {X.size()}")
     lhs,rhs = Utils.compute_bounds_SO3(b_in - 5)
     lb = int(center - lhs)
     ub = int(center + rhs)
-    X = X[lb:ub, :, :, :]
+    #X = X[lb:ub, :, :, :]
+    X[0:lb, :, :, :] = 0
+    X[lb:, :, :, :] = 0
     print(f"LHS: {lhs}, RHS: {rhs}, lb = {lb}, ub = {ub}, center = {center} and X is {X.size()}")
+    '''
 
     X, _ = Utils.ifftshift(X)
     print(f"shifted signal {X.size()}")
@@ -111,7 +101,7 @@ if __name__ == "__main__":
     print(f"feature X shape: {X_e0.size()}")
     plt.plot(X_e0)
     plt.plot(X_e1)
-    plt.show()
+    #plt.show()
 
     z = SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
-    print(f"Reverse transformed features shape: {z.size()}")
+    print(f"Reverse transformed features shape: {z.size()} x_init = {x_init.size()}")
