@@ -6,6 +6,7 @@ from s2cnn import s2_near_identity_grid
 from s2_deconv import S2Deconvolution
 from s2_conv import S2Convolution
 from so3_pooling import SO3Pooling
+from so3_unpooling import SO3Unpooling
 
 # pylint: disable=R,C,E1101
 import torch
@@ -41,6 +42,8 @@ class S2AE_Model_1(nn.Module):
                 b_in  = self.bandwidths[1],
                 b_out = self.bandwidths[1],
                 grid=grid_so3_1),
+            nn.ReLU(inplace=False),
+            nn.BatchNorm3d(self.features[1], affine=True),
             SO3Pooling(
                 nfeature_in  = self.features[1],
                 nfeature_out = self.features[1],
@@ -54,26 +57,62 @@ class S2AE_Model_1(nn.Module):
                 b_in  = self.bandwidths[2],
                 b_out = self.bandwidths[2],
                 grid=grid_so3_2),
+            nn.ReLU(inplace=False),
+            nn.BatchNorm3d(self.features[2], affine=True),
             SO3Convolution(
                 nfeature_in  = self.features[2],
                 nfeature_out = self.features[2],
                 b_in  = self.bandwidths[2],
                 b_out = self.bandwidths[2],
                 grid=grid_so3_2),
+            nn.ReLU(inplace=False),
+            nn.BatchNorm3d(self.features[2], affine=True),
             SO3Pooling(
                 nfeature_in  = self.features[2],
                 nfeature_out = self.features[2],
                 b_in  = self.bandwidths[2],
                 b_out = self.bandwidths[3]),
-
         )
 
-        self.deconvolutional = S2Deconvolution(
+        self.deconvolutional = nn.Sequential(
+            # First deconv block
+            SO3Unpooling(
+                nfeature_in  = self.features[2],
+                nfeature_out = self.features[2],
+                b_in  = self.bandwidths[3],
+                b_out = self.bandwidths[2]),
+            SO3Convolution(
+                nfeature_in  = self.features[2],
+                nfeature_out = self.features[2],
+                b_in  = self.bandwidths[2],
+                b_out = self.bandwidths[2],
+                grid=grid_so3_2),
+            nn.ReLU(inplace=False),
+            nn.BatchNorm3d(self.features[2], affine=True),
+            SO3Convolution(
+                nfeature_in  = self.features[2],
+                nfeature_out = self.features[1],
+                b_in  = self.bandwidths[2],
+                b_out = self.bandwidths[2],
+                grid=grid_so3_2),
+            nn.ReLU(inplace=False),
+            nn.BatchNorm3d(self.features[1], affine=True),
+
+            # Second deconv block
+            SO3Unpooling(
                 nfeature_in  = self.features[1],
-                nfeature_out = self.features[0],
+                nfeature_out = self.features[1],
+                b_in  = self.bandwidths[2],
+                b_out = self.bandwidths[1]),
+            SO3Convolution(
+                nfeature_in  = self.features[1],
+                nfeature_out = self.features[1],
                 b_in  = self.bandwidths[1],
                 b_out = self.bandwidths[1],
-                grid=grid_s2)
+                grid=grid_so3_1),
+            nn.ReLU(inplace=False),
+            nn.BatchNorm3d(self.features[1], affine=True),
+        )
 
     def forward(self, x1):
         x_enc = self.convolutional(x1)  # [batch, feature, beta, alpha, gamma]
