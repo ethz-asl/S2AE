@@ -79,12 +79,12 @@ class SO3Pooling(Module):
         return z
 
 if __name__ == "__main__":
+    b_in = 30
     x = torch.rand(1, 2, 12, 12, 12)  # [batch, feature_in, beta, alpha, gamma]
-    x = SO3_fft_real.apply(x, 30)
+    x = SO3_fft_real.apply(x, b_in)
     print(f"x shape after transform is {x.size()}") # [l*m*n, batch, feature_in, complex]
 
-    X = Utils.fftshift(x)
-
+    X, center = Utils.fftshift(x)
     F0 = X[:,0,0,:]
     F1 = X[:,0,1,:]
     X_e0 = torch.view_as_complex(F0).abs()
@@ -94,8 +94,16 @@ if __name__ == "__main__":
     plt.plot(X_e1)
     plt.show()
 
-    X = Utils.ifftshift(X)
+    # Low-pass filter the signal.
+    print(f"X shape before LP is {X.size()}")
+    lhs,rhs = Utils.compute_bounds_SO3(b_in - 5)
+    lb = int(center - lhs)
+    ub = int(center + rhs)
+    X = X[lb:ub, :, :, :]
+    print(f"LHS: {lhs}, RHS: {rhs}, lb = {lb}, ub = {ub}, center = {center} and X is {X.size()}")
 
+    X, _ = Utils.ifftshift(X)
+    print(f"shifted signal {X.size()}")
     F0 = X[:,0,0,:]
     F1 = X[:,0,1,:]
     X_e0 = torch.view_as_complex(F0).abs()
@@ -105,5 +113,5 @@ if __name__ == "__main__":
     plt.plot(X_e1)
     plt.show()
 
-    #x = torch.rand(1, 2, 12, 12, 2)  # [..., beta, alpha, complex]
-    #z1 = s2_fft(x, b_out=5)
+    z = SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
+    print(f"Reverse transformed features shape: {z.size()}")
