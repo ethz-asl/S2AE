@@ -5,6 +5,7 @@ import numpy as np
 from s2cnn import s2_near_identity_grid
 from s2_deconv import S2Deconvolution
 from s2_conv import S2Convolution
+from so3_pooling import SO3Pooling
 
 # pylint: disable=R,C,E1101
 import torch
@@ -16,14 +17,16 @@ class S2AE_Model_1(nn.Module):
     def __init__(self, bandwidth=30):
         super().__init__()
 
-        self.features = [2, 10]
-        self.bandwidths = [bandwidth, 30]
+        self.features = [2, 10, 30]
+        self.bandwidths = [bandwidth, 30, 10, 5]
 
         assert len(self.bandwidths) == len(self.features)
         grid_s2 = s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/16, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
+        grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 8, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
 
         self.convolutional = nn.Sequential(
+            # First conv block
             S2Convolution(
                 nfeature_in  = self.features[0],
                 nfeature_out = self.features[1],
@@ -38,6 +41,31 @@ class S2AE_Model_1(nn.Module):
                 b_in  = self.bandwidths[1],
                 b_out = self.bandwidths[1],
                 grid=grid_so3_1),
+            SO3Pooling(
+                nfeature_in  = self.features[1],
+                nfeature_out = self.features[1],
+                b_in  = self.bandwidths[1],
+                b_out = self.bandwidths[2]),
+
+            # Second conv block
+            SO3Convolution(
+                nfeature_in  = self.features[1],
+                nfeature_out = self.features[2],
+                b_in  = self.bandwidths[2],
+                b_out = self.bandwidths[2],
+                grid=grid_so3_2),
+            SO3Convolution(
+                nfeature_in  = self.features[2],
+                nfeature_out = self.features[2],
+                b_in  = self.bandwidths[2],
+                b_out = self.bandwidths[2],
+                grid=grid_so3_2),
+            SO3Pooling(
+                nfeature_in  = self.features[2],
+                nfeature_out = self.features[2],
+                b_in  = self.bandwidths[2],
+                b_out = self.bandwidths[3]),
+
         )
 
         self.deconvolutional = S2Deconvolution(

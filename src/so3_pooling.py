@@ -26,10 +26,11 @@ class SO3_spectral_pool(torch.autograd.Function):
 
         # Transform the input to the spherical domain.
         # Also, shift the DC component to the center.
-        x = so3_rfft(x, b_out=ctx.b_out)
+        x = so3_rfft(x, b_out=ctx.b_in)
         X, center = Utils.fftshift(x)
 
         # Low-pass filter the signal.
+        lhs,rhs = Utils.compute_bounds_SO3(b_out)
         ctx.lb = int(center - lhs)
         ctx.ub = int(center + rhs)
         X = X[ctx.lb:ctx.ub, :, :, :]
@@ -39,7 +40,7 @@ class SO3_spectral_pool(torch.autograd.Function):
         return SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
 
 class SO3Pooling(Module):
-    def __init__(self, nfeature_in, nfeature_out, b_in, b_out, grid):
+    def __init__(self, nfeature_in, nfeature_out, b_in, b_out):
         '''
         :param nfeature_in: number of input fearures
         :param nfeature_out: number of output features
@@ -49,9 +50,9 @@ class SO3Pooling(Module):
         '''
         super(SO3Pooling, self).__init__()
         self.nfeature_in = nfeature_in
-        self.nfeature_out = nfeature_out
         self.b_in = b_in
         self.b_out = b_out
+        assert self.b_out < self.b_in
 
     def forward(self, x):  # pylint: disable=W
         '''
@@ -62,7 +63,7 @@ class SO3Pooling(Module):
         assert x.size(2) == 2 * self.b_in
         assert x.size(3) == 2 * self.b_in
         assert x.size(4) == 2 * self.b_in
-        return SO3_spectral_pool.apply(x)
+        return SO3_spectral_pool.apply(x, self.b_out)
 
 if __name__ == "__main__":
     b_in = 30
@@ -81,7 +82,6 @@ if __name__ == "__main__":
     #plt.show()
 
     # Low-pass filter the signal.
-    '''
     print(f"X shape before LP is {X.size()}")
     lhs,rhs = Utils.compute_bounds_SO3(b_in - 5)
     lb = int(center - lhs)
@@ -90,7 +90,6 @@ if __name__ == "__main__":
     X[0:lb, :, :, :] = 0
     X[lb:, :, :, :] = 0
     print(f"LHS: {lhs}, RHS: {rhs}, lb = {lb}, ub = {ub}, center = {center} and X is {X.size()}")
-    '''
 
     X, _ = Utils.ifftshift(X)
     print(f"shifted signal {X.size()}")
