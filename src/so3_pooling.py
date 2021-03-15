@@ -83,21 +83,7 @@ if __name__ == "__main__":
     x = SO3_fft_real.apply(x, 30)
     print(f"x shape after transform is {x.size()}") # [l*m*n, batch, feature_in, complex]
 
-    #X = torch.view_as_complex(x[:, 0, 0,:])
-    #X = x.view(x.size(1), x.size(2), x.size(0), 2) # [batch, feature_in, l*m*n, complex]
-    real = x[:,:,:,0]
-    imag = x[:,:,:,1]
-
-    # fftshift
-    lmn = x.size(0)
-    shift = int(np.floor(lmn / 2))
-    print(f"real and imag shape are {real.size()} and {imag.size()}")
-    print(f"shift is {shift}")
-
-    real = torch.roll(real, dims=0, shifts=shift)
-    imag = torch.roll(imag, dims=0, shifts=shift)
-    X = torch.stack((real, imag), dim=-1)
-    print(f"size of shifted is {X.size()}")
+    X = Utils.fftshift(x)
 
     F0 = X[:,0,0,:]
     F1 = X[:,0,1,:]
@@ -108,11 +94,7 @@ if __name__ == "__main__":
     plt.plot(X_e1)
     plt.show()
 
-    # ifftshift
-    shift = int(np.ceil(lmn / 2))
-    real = torch.roll(real, dims=0, shifts=shift)
-    imag = torch.roll(imag, dims=0, shifts=shift)
-    X = torch.stack((real, imag), dim=-1)
+    X = Utils.ifftshift(X)
 
     F0 = X[:,0,0,:]
     F1 = X[:,0,1,:]
