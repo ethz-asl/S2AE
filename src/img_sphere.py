@@ -20,7 +20,7 @@ class ImageSphere:
         pcd_tree = o3d.geometry.KDTreeFlann(pcd)
 
         kNearestNeighbors = 1
-        features = np.zeros((2, grid.shape[1], grid.shape[2]))
+        features = np.zeros((1, grid.shape[1], grid.shape[2]))
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
                 [k, nn_idx, _] = pcd_tree.search_knn_vector_3d(cart_grid[:, i, j], kNearestNeighbors)
