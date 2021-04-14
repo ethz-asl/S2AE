@@ -15,8 +15,8 @@ class L2Loss(nn.Module):
 
     def forward(self, decoded, teacher, size_average=True, batch_all=True):
         distance_dec_teacher = (decoded - teacher).pow(2).sum(1)
-        losses = F.relu(distance_positive - self.margin) + self.alpha
-        
+        losses = F.relu(distance_dec_teacher - self.margin) + self.alpha
+
         if size_average:
             if batch_all:
                 return distance_dec_teacher, losses.sum()/(((losses > 1e-16).sum()).float()+1e-16), losses.mean()
@@ -24,7 +24,7 @@ class L2Loss(nn.Module):
                 return distance_dec_teacher, losses.mean()
         else:
             return distance_positive, losses.sum()
-    
+
 
 if __name__ == "__main__":
     criterion = L2Loss(alpha=0.5, margin=0.2)

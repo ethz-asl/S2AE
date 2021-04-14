@@ -64,17 +64,19 @@ class ModelEncodeDecodeSimple(nn.Module):
                 nfeature_out = self.features[1],
                 b_in  = self.bandwidths[0],
                 b_out = self.bandwidths[1],
+                b_inverse= self.bandwidths[1],
                 grid=grid_s2),
             nn.PReLU(),
             nn.BatchNorm3d(self.features[1], affine=True)
-        )                
-            
+        )
+
         self.deconvolutional = nn.Sequential(
-            S2Deconvolution(
+            S2Convolution(
                 nfeature_in  = self.features[1],
                 nfeature_out = self.features[0],
                 b_in  = self.bandwidths[1],
                 b_out = self.bandwidths[1],
+                b_inverse = self.bandwidths[0],
                 grid=grid_s2),
             nn.PReLU(),
             nn.BatchNorm3d(self.features[0], affine=True)
@@ -86,5 +88,7 @@ class ModelEncodeDecodeSimple(nn.Module):
         x_enc = so3_integrate(x_enc)  # [batch, feature]
         print(f"integrated x shape is {x_enc.shape}")
         x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
+        print(f"decoded x shape is {x_dec.shape}")
         x_dec = so3_integrate(x_dec)  # [batch, feature]
+        print(f"integrated x shape is {x_dec.shape}")
         return x_dec

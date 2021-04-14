@@ -10,7 +10,7 @@ from s2cnn import s2_mm
 from s2cnn import s2_rft
 
 class S2Convolution(Module):
-    def __init__(self, nfeature_in, nfeature_out, b_in, b_out, grid):
+    def __init__(self, nfeature_in, nfeature_out, b_in, b_out, b_inverse, grid):
         '''
         :param nfeature_in: number of input fearures
         :param nfeature_out: number of output features
@@ -23,6 +23,7 @@ class S2Convolution(Module):
         self.nfeature_out = nfeature_out
         self.b_in = b_in
         self.b_out = b_out
+        self.b_inverse = b_inverse
         self.grid = grid
         self.kernel = Parameter(torch.empty(nfeature_in, nfeature_out, len(grid)).uniform_(-1, 1))
         self.scaling = 1. / math.sqrt(len(self.grid) * self.nfeature_in * (self.b_out ** 4.) / (self.b_in ** 2.))
@@ -42,7 +43,7 @@ class S2Convolution(Module):
 
         print(f"[conv] x shape is {x.shape} and y shape is {y.shape}")
         z = s2_mm(x, y)  # [l * m * n, batch, feature_out, complex]
-        z = SO3_ifft_real.apply(z)  # [batch, feature_out, beta, alpha, gamma]
+        z = SO3_ifft_real.apply(z, self.b_inverse)  # [batch, feature_out, beta, alpha, gamma]
 
         z = z + self.bias
 
