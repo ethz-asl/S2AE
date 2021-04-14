@@ -73,13 +73,13 @@ class ModelEncodeDecodeSimple(nn.Module):
         self.deconvolutional = nn.Sequential(
             S2Convolution(
                 nfeature_in  = self.features[1],
-                nfeature_out = self.features[0],
+                nfeature_out = 1,
                 b_in  = self.bandwidths[1],
                 b_out = self.bandwidths[1],
                 b_inverse = self.bandwidths[0],
                 grid=grid_s2),
             nn.PReLU(),
-            nn.BatchNorm3d(self.features[0], affine=True)
+            nn.BatchNorm3d(1, affine=True)
         )
 
     def forward(self, x1):
