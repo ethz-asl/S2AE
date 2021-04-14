@@ -40,8 +40,6 @@ class S2Convolution(Module):
         x = S2_fft_real.apply(x, self.b_out)  # [l * m, batch, feature_in, complex]
         y = s2_rft(self.kernel * self.scaling, self.b_out, self.grid)  # [l * m, feature_in, feature_out, complex]
 
-
-        print(f"[conv] x shape is {x.shape} and y shape is {y.shape}")
         z = s2_mm(x, y)  # [l * m * n, batch, feature_out, complex]
         z = SO3_ifft_real.apply(z, self.b_inverse)  # [batch, feature_out, beta, alpha, gamma]
 
