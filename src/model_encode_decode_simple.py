@@ -58,25 +58,33 @@ class ModelEncodeDecodeSimple(nn.Module):
         assert len(self.bandwidths) == len(self.features)
         grid_s2 = s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
 
-        self.convolutional = S2Convolution(
+        self.convolutional = nn.Sequential(
+            S2Convolution(
                 nfeature_in  = self.features[0],
                 nfeature_out = self.features[1],
                 b_in  = self.bandwidths[0],
                 b_out = self.bandwidths[1],
-                grid=grid_s2)
-        self.deconvolutional = S2Deconvolution(
+                grid=grid_s2),
+            nn.PReLU(),
+            nn.BatchNorm3d(self.features[1], affine=True)
+        )                
+            
+        self.deconvolutional = nn.Sequential(
+            S2Deconvolution(
                 nfeature_in  = self.features[1],
                 nfeature_out = self.features[0],
                 b_in  = self.bandwidths[1],
                 b_out = self.bandwidths[1],
-                grid=grid_s2)
+                grid=grid_s2),
+            nn.PReLU(),
+            nn.BatchNorm3d(self.features[0], affine=True)
+        )
 
     def forward(self, x1):
         x_enc = self.convolutional(x1)  # [batch, feature, beta, alpha, gamma]
         print(f"encoded x shape is {x_enc.shape}")
-        #x_enc = so3_integrate(x_enc)  # [batch, feature]
-        #print(f"integrated x shape is {x_enc.shape}")
-        return x_enc
-        #x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
-        #x_dec = so3_integrate(x_dec)  # [batch, feature]
-        #return x_dec
+        x_enc = so3_integrate(x_enc)  # [batch, feature]
+        print(f"integrated x shape is {x_enc.shape}")
+        x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
+        x_dec = so3_integrate(x_dec)  # [batch, feature]
+        return x_dec
