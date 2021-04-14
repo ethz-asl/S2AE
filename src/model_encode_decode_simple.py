@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 
 from s2cnn import s2_near_identity_grid
+from s2cnn import so3_integrate
 from s2_deconv import S2Deconvolution
 from s2_conv import S2Convolution
 
@@ -12,7 +13,7 @@ from functools import lru_cache
 from s2cnn.utils.decorator import show_running
 
 
-def so3_integrate(x):
+def so3_to_s2_integrate(x):
     """
     Integrate a signal on SO(3) using the Haar measure
 
@@ -84,11 +85,11 @@ class ModelEncodeDecodeSimple(nn.Module):
 
     def forward(self, x1):
         x_enc = self.convolutional(x1)  # [batch, feature, beta, alpha, gamma]
-        print(f"encoded x shape is {x_enc.shape}")
-        x_enc = so3_integrate(x_enc)  # [batch, feature]
-        print(f"integrated x shape is {x_enc.shape}")
+        #print(f"encoded x shape is {x_enc.shape}")
+        x_enc = so3_to_s2_integrate(x_enc)  # [batch, feature]
+        #print(f"integrated x shape is {x_enc.shape}")
         x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
-        print(f"decoded x shape is {x_dec.shape}")
-        x_dec = so3_integrate(x_dec)  # [batch, feature]
-        print(f"integrated x shape is {x_dec.shape}")
+        #print(f"decoded x shape is {x_dec.shape}")
+        x_dec = so3_to_s2_integrate(x_dec)  # [batch, feature]
+        #print(f"integrated x shape is {x_dec.shape}")
         return x_dec
