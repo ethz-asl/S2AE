@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 
 from s2cnn import s2_near_identity_grid
+from s2cnn import so3_integrate
 from s2_deconv import S2Deconvolution
 from s2_conv import S2Convolution
 
@@ -12,7 +13,7 @@ from functools import lru_cache
 from s2cnn.utils.decorator import show_running
 
 
-def so3_integrate(x):
+def so3_to_s2_integrate(x):
     """
     Integrate a signal on SO(3) using the Haar measure
 
@@ -58,25 +59,37 @@ class ModelEncodeDecodeSimple(nn.Module):
         assert len(self.bandwidths) == len(self.features)
         grid_s2 = s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
 
-        self.convolutional = S2Convolution(
+        self.convolutional = nn.Sequential(
+            S2Convolution(
                 nfeature_in  = self.features[0],
                 nfeature_out = self.features[1],
                 b_in  = self.bandwidths[0],
                 b_out = self.bandwidths[1],
-                grid=grid_s2)
-        self.deconvolutional = S2Deconvolution(
+                b_inverse= self.bandwidths[1],
+                grid=grid_s2),
+            nn.PReLU(),
+            nn.BatchNorm3d(self.features[1], affine=True)
+        )
+
+        self.deconvolutional = nn.Sequential(
+            S2Convolution(
                 nfeature_in  = self.features[1],
-                nfeature_out = self.features[0],
+                nfeature_out = 1,
                 b_in  = self.bandwidths[1],
                 b_out = self.bandwidths[1],
-                grid=grid_s2)
+                b_inverse = self.bandwidths[0],
+                grid=grid_s2),
+            nn.PReLU(),
+            nn.BatchNorm3d(1, affine=True)
+        )
 
     def forward(self, x1):
         x_enc = self.convolutional(x1)  # [batch, feature, beta, alpha, gamma]
-        print(f"encoded x shape is {x_enc.shape}")
-        #x_enc = so3_integrate(x_enc)  # [batch, feature]
+        #print(f"encoded x shape is {x_enc.shape}")
+        x_enc = so3_to_s2_integrate(x_enc)  # [batch, feature]
         #print(f"integrated x shape is {x_enc.shape}")
-        return x_enc
-        #x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
-        #x_dec = so3_integrate(x_dec)  # [batch, feature]
-        #return x_dec
+        x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
+        #print(f"decoded x shape is {x_dec.shape}")
+        x_dec = so3_to_s2_integrate(x_dec)  # [batch, feature]
+        #print(f"integrated x shape is {x_dec.shape}")
+        return x_dec

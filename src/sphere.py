@@ -43,12 +43,18 @@ class Sphere:
 
         kNearestNeighbors = 1
         features = np.zeros((2, grid.shape[1], grid.shape[2]))
+        dist_threshold = 0.3
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
-                [k, nn_idx, _] = pcd_tree.search_knn_vector_3d(cart_grid[:, i, j], kNearestNeighbors)
+                [k, nn_idx, nn_dist] = pcd_tree.search_knn_vector_3d(cart_grid[:, i, j], kNearestNeighbors)
 
                 # TODO(lbern): Average over all neighbors
-                for cur_idx in nn_idx:
+                for k in range(kNearestNeighbors):
+                    cur_idx = nn_idx[k]
+                    cur_dist = np.absolute(nn_dist[k])
+                    if (cur_dist > 0.001):
+                        continue
+
                     range_value = self.ranges[cur_idx]
                     intensity = self.intensity[cur_idx]
 

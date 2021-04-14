@@ -131,4 +131,7 @@ dmypy.json
 # cached computations
 *.pkl.gz
 *.pkl
-cache/
+**/cache/
+
+# custom
+**/runs/
