@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-from s2cnn import s2_near_identity_grid
+from s2cnn import s2_near_identity_grid, so3_near_identity_grid
 from s2cnn import so3_integrate
 from s2_deconv import S2Deconvolution
 from s2_conv import S2Convolution
@@ -31,11 +31,11 @@ def so3_to_s2_integrate(x):
     #x = torch.sum(x, dim=-1).squeeze(-1)  # [..., beta, alpha]
     #x = torch.sum(x, dim=-1).squeeze(-1)  # [..., beta]
 
-    print(f"size of x: {x.size()},  w {w.size()}")
+    #print(f"size of x: {x.size()},  w {w.size()}")
 
     sz = x.size()
     x = x.view(-1, 2 * b)
-    print(f"size of x reshaped {x.size()}")
+    #print(f"size of x reshaped {x.size()}")
 
     w = w.view(2 * b, 1)
     x = torch.mm(x, w).squeeze(-1)
@@ -57,7 +57,6 @@ class ModelEncodeDecodeSimple(nn.Module):
         self.features = [2, 10, 20, 60, 1]
         self.bandwidths = [bandwidth, 30, 20, 10]
 
-        assert len(self.bandwidths) == len(self.features)
         grid_s2 = s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/16, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 8, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
@@ -73,7 +72,7 @@ class ModelEncodeDecodeSimple(nn.Module):
                 b_inverse = self.bandwidths[1],
                 grid=grid_s2),
             nn.PReLU(),
-            nn.BatchNorm3d(self.features[1], affine=True),
+            #nn.BatchNorm3d(self.features[1], affine=True),
             SO3Convolution(
                 nfeature_in  = self.features[1],
                 nfeature_out = self.features[2],
@@ -82,7 +81,7 @@ class ModelEncodeDecodeSimple(nn.Module):
                 b_inverse = self.bandwidths[2],
                 grid=grid_so3_1),
             nn.PReLU(),
-            nn.BatchNorm3d(self.features[2], affine=True),
+            #nn.BatchNorm3d(self.features[2], affine=True),
             SO3Convolution(
                 nfeature_in  = self.features[2],
                 nfeature_out = self.features[3],
@@ -91,7 +90,7 @@ class ModelEncodeDecodeSimple(nn.Module):
                 b_inverse = self.bandwidths[3],
                 grid=grid_so3_2),
             nn.PReLU(),
-            nn.BatchNorm3d(self.features[2], affine=True),
+            #nn.BatchNorm3d(self.features[3], affine=True),
         )
 
         self.deconvolutional = nn.Sequential(
@@ -103,14 +102,18 @@ class ModelEncodeDecodeSimple(nn.Module):
                 b_inverse = self.bandwidths[0],
                 grid=grid_so3_3),
             nn.PReLU(),
-            nn.BatchNorm3d(self.features[4], affine=True),
+            #nn.BatchNorm3d(self.features[4], affine=True),
         )
 
     def forward(self, x1):
         x_enc = self.convolutional(x1)  # [batch, feature, beta, alpha, gamma]
-        #print(f"encoded x shape is {x_enc.shape}")
         x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
-        #print(f"decoded x shape is {x_dec.shape}")
-        x_dec = so3_to_s2_integrate(x_dec)  # [batch, feature]
-        #print(f"integrated x shape is {x_dec.shape}")
+
+
+        # integrate out the gamma component to get a signal on S^2.
+        #x_dec = so3_to_s2_integrate(x_dec)  # [batch, feature]
+
+        # Max pooling of the gamma component
+        x_dec = x_dec.max(-1)[0]
+
         return x_dec

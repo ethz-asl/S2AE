@@ -5,8 +5,8 @@ from torch.nn.parameter import Parameter
 from torch.nn.modules import Module
 
 from s2cnn.soft.so3_fft import SO3_ifft_real, SO3_fft_real
-from s2cnn import s2_mm
-from s2cnn import s2_rft
+from s2cnn import s2_mm, so3_mm
+from s2cnn import s2_rft, so3_rft
 
 class SO3Convolution(Module):
     def __init__(self, nfeature_in, nfeature_out, b_in, b_out, b_inverse, grid):
