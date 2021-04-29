@@ -4,7 +4,10 @@ import numpy as np
 
 from s2cnn import s2_near_identity_grid, so3_near_identity_grid
 from s2cnn import so3_integrate
-from s2_deconv import S2Deconvolution
+
+#from s2cnn import S2Convolution, SO3Convolution
+
+
 from s2_conv import S2Convolution
 from so3_conv import SO3Convolution
 
@@ -35,7 +38,6 @@ def so3_to_s2_integrate(x):
 
     sz = x.size()
     x = x.view(-1, 2 * b)
-    #print(f"size of x reshaped {x.size()}")
 
     w = w.view(2 * b, 1)
     x = torch.mm(x, w).squeeze(-1)
@@ -54,13 +56,25 @@ class ModelEncodeDecodeSimple(nn.Module):
     def __init__(self, bandwidth=30):
         super().__init__()
 
-        self.features = [2, 10, 20, 60, 1]
-        self.bandwidths = [bandwidth, 30, 20, 10]
+        #self.features = [2, 10, 20, 60, 1]
+        #self.bandwidths = [bandwidth, 30, 20, 10]
 
+        '''
         grid_s2 = s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/16, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 8, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_3 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 4, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
+        '''
+        
+        self.features = [2, 10, 20, 60, 1]        
+        self.bandwidths = [bandwidth, 50, 40, 20] 
+                
+
+        grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
+        grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/16, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
+        grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 8, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
+        grid_so3_3 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 4, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
+        grid_so3_4 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 2, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
 
 
         self.convolutional = nn.Sequential(
@@ -71,7 +85,7 @@ class ModelEncodeDecodeSimple(nn.Module):
                 b_out = self.bandwidths[1],
                 b_inverse = self.bandwidths[1],
                 grid=grid_s2),
-            nn.PReLU(),
+            nn.ReLU(),
             #nn.BatchNorm3d(self.features[1], affine=True),
             SO3Convolution(
                 nfeature_in  = self.features[1],
@@ -80,7 +94,7 @@ class ModelEncodeDecodeSimple(nn.Module):
                 b_out = self.bandwidths[2],
                 b_inverse = self.bandwidths[2],
                 grid=grid_so3_1),
-            nn.PReLU(),
+            nn.ReLU(),
             #nn.BatchNorm3d(self.features[2], affine=True),
             SO3Convolution(
                 nfeature_in  = self.features[2],
@@ -89,10 +103,10 @@ class ModelEncodeDecodeSimple(nn.Module):
                 b_out = self.bandwidths[3],
                 b_inverse = self.bandwidths[3],
                 grid=grid_so3_2),
-            nn.PReLU(),
+            nn.ReLU(),
             #nn.BatchNorm3d(self.features[3], affine=True),
         )
-
+        
         self.deconvolutional = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.features[3],
@@ -104,16 +118,28 @@ class ModelEncodeDecodeSimple(nn.Module):
             nn.PReLU(),
             #nn.BatchNorm3d(self.features[4], affine=True),
         )
+        
 
     def forward(self, x1):
+        if torch.isnan(x1).any():
+            print(f"x1 is already nan")
         x_enc = self.convolutional(x1)  # [batch, feature, beta, alpha, gamma]
+        if torch.isnan(x_enc).any():
+            print(f"encoded is already nan")
         x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
-
+        if torch.isnan(x_dec).any():
+           print(f"decoded is already nan")
 
         # integrate out the gamma component to get a signal on S^2.
         #x_dec = so3_to_s2_integrate(x_dec)  # [batch, feature]
 
         # Max pooling of the gamma component
-        x_dec = x_dec.max(-1)[0]
-
-        return x_dec
+        #x_dec = x_dec.max(-1)[0]
+        #print(f"shape of x_dec is {x_dec.shape}")
+        #m = nn.MaxPool3d((x_dec.shape[0], x_dec.shape[1], 1), stride=(1,1,1))
+        #res = m(x_dec)
+        res, _ = torch.max(x_dec, 4)
+#         print(f"shape of max pooled is {res.shape}")
+        
+        
+        return res

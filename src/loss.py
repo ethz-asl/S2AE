@@ -14,6 +14,13 @@ class L2Loss(nn.Module):
         self.margin = margin
 
     def forward(self, decoded, teacher, size_average=True, batch_all=True):
+        decoded_test = torch.isnan(decoded).any()
+        teacher_test = torch.isnan(teacher).any()
+        if decoded_test:
+            print(f"decoded is for some reason nan")
+        if teacher_test:
+            print(f"decoded is for some reason nan")
+        
         distance_dec_teacher = (decoded - teacher).pow(2).sum(1)
         losses = F.relu(distance_dec_teacher - self.margin) + self.alpha
 
