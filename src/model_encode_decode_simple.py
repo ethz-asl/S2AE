@@ -56,14 +56,15 @@ class ModelEncodeDecodeSimple(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        self.features = [2, 10, 20, 60, 100, n_classes]        
-        self.bandwidths = [bandwidth, 70, 50, 40, 30] 
+        self.features = [2, 10, 20, 60, 100, 120, n_classes]        
+        self.bandwidths = [bandwidth, 70, 50, 40, 30, 20] 
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 32, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_3 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 24, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_4 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 16, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
+        grid_so3_5 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 8, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
 
 
         self.convolutional = nn.Sequential(
@@ -103,33 +104,29 @@ class ModelEncodeDecodeSimple(nn.Module):
                 grid=grid_so3_3),
             nn.PReLU(),
             nn.BatchNorm3d(self.features[4], affine=True),
-        )
-        
-        self.deconvolutional = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.features[4],
                 nfeature_out = self.features[5],
                 b_in  = self.bandwidths[4],
-                b_out = self.bandwidths[4],
-                b_inverse = self.bandwidths[0],
-                grid=grid_so3_4)            
+                b_out = self.bandwidths[5],
+                b_inverse = self.bandwidths[5],
+                grid=grid_so3_4),
+            nn.PReLU(),
+            nn.BatchNorm3d(self.features[5], affine=True),
         )
+        
+        self.deconvolutional = nn.Sequential(
+            SO3Convolution(
+                nfeature_in  = self.features[5],
+                nfeature_out = self.features[6],
+                b_in  = self.bandwidths[5],
+                b_out = self.bandwidths[5],
+                b_inverse = self.bandwidths[0],
+                grid=grid_so3_5)            
+        )
+        
+        self.sm = nn.LogSoftmax(dim=1)
         
 
     def forward(self, x1):
-        x_enc = self.convolutional(x1)  # [batch, feature, beta, alpha, gamma]
-        x_dec = self.deconvolutional(x_enc)  # [batch, feature, beta, alpha, gamma]
-
-        # integrate out the gamma component to get a signal on S^2.
-        #x_dec = so3_to_s2_integrate(x_dec)  # [batch, feature]
-
-        # Max pooling of the gamma component
-        #x_dec = x_dec.max(-1)[0]
-        print(f"shape of x_dec is {x_dec.shape}")
-        #m = nn.MaxPool3d((x_dec.shape[0], x_dec.shape[1], 1), stride=(1,1,1))
-        #res = m(x_dec)
-        #res, _ = torch.max(x_dec, 1)
-        res = x_dec.max(-1)[0]
-        print(f"shape of max pooled is {res.shape}")
-                    
-        return res
+        return self.sm(self.deconvolutional(self.convolutional(x1)).max(-1)[0])

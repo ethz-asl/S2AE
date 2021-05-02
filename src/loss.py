@@ -52,8 +52,7 @@ class NegativeLogLikelihoodLoss(nn.Module):
         self.n_classes = n_classes
         
     def forward(self, decoded, teacher, size_average=True, batch_all=True):
-        print(f"shape of decoded is {decoded.shape} and teacher is {teacher.shape}")
-        losses = F.nll_loss(decoded, teacher, weight=None, size_average=size_average, reduction='none')
+        losses = F.nll_loss(decoded, teacher, weight=None, size_average=size_average)
 
         if size_average:
             if batch_all:

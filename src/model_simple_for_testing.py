@@ -37,7 +37,7 @@ class ModelSimpleForTesting(nn.Module):
                 b_inverse = self.bandwidths[1],
                 grid=grid_s2),
             nn.ReLU(),
-#             nn.BatchNorm3d(self.features[1], affine=True),
+            nn.BatchNorm3d(self.features[1], affine=True),
             SO3Convolution(
                 nfeature_in  = self.features[1],
                 nfeature_out = self.features[2],
@@ -46,7 +46,7 @@ class ModelSimpleForTesting(nn.Module):
                 b_inverse = self.bandwidths[2],
                 grid=grid_so3_1),
             nn.ReLU(),
-#             nn.BatchNorm3d(self.features[2], affine=True),
+            nn.BatchNorm3d(self.features[2], affine=True),
         )
         
         self.deconvolutional = nn.Sequential(
