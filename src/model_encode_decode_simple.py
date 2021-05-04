@@ -26,31 +26,7 @@ def so3_to_s2_integrate(x):
     """
     assert x.size(-1) == x.size(-2)
     assert x.size(-2) == x.size(-3)
-
-    b = x.size(-1) // 2
-
-    w = _setup_so3_integrate(b, device_type=x.device.type, device_index=x.device.index)  # [beta]
-
-    #x = torch.sum(x, dim=-1).squeeze(-1)  # [..., beta, alpha]
-    #x = torch.sum(x, dim=-1).squeeze(-1)  # [..., beta]
-
-    #print(f"size of x: {x.size()},  w {w.size()}")
-
-    sz = x.size()
-    x = x.view(-1, 2 * b)
-
-    w = w.view(2 * b, 1)
-    x = torch.mm(x, w).squeeze(-1)
-    x = x.view(*sz[:-1])
-    return x
-
-
-@lru_cache(maxsize=32)
-@show_running
-def _setup_so3_integrate(b, device_type, device_index):
-    import lie_learn.spaces.S3 as S3
-
-    return torch.tensor(S3.quadrature_weights(b), dtype=torch.float32, device=torch.device(device_type, device_index))  # (2b) [beta]  # pylint: disable=E1102
+    return torch.sum(x, dim=-1) * (2*np.pi/x.size(-1))
 
 class ModelEncodeDecodeSimple(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
@@ -129,4 +105,5 @@ class ModelEncodeDecodeSimple(nn.Module):
         
 
     def forward(self, x1):
-        return self.sm(self.deconvolutional(self.convolutional(x1)).max(-1)[0])
+        #return self.sm(self.deconvolutional(self.convolutional(x1)).max(-1)[0])
+        return self.sm(so3_to_s2_integrate(self.deconvolutional(self.convolutional(x1))))
