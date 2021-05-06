@@ -20,6 +20,8 @@ from model_encode_decode_simple import ModelEncodeDecodeSimple
 # from model_simple_for_testing import ModelSimpleForTesting
 from sphere import Sphere
 from visualize import Visualize
+from metrics import *
+from average_meter import AverageMeter
     
 # ## Initialize some parameter
 print(f"Initializing CUDA...")
@@ -130,32 +132,74 @@ def train_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_, t0):
     return n_iter
 
 def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
+    avg_pixel_acc = AverageMeter()
+    avg_pixel_acc_per_class = AverageMeter()
+    avg_jacc = AverageMeter()
+    avg_dice = AverageMeter()
     net.eval()
-    with torch.no_grad():            
-        for batch_idx, (cloud, lidarseg_gt) in enumerate(val_loader):            
+    with torch.no_grad():
+        for batch_idx, (cloud, lidarseg_gt) in enumerate(val_loader):
             cloud, lidarseg_gt = cloud.cuda().float(), lidarseg_gt.cuda().long()
             enc_dec_cloud = net(cloud)
-                        
+
             optimizer.zero_grad()
-            loss, loss_total = criterion(enc_dec_cloud, lidarseg_gt)                                    
-                                    
-            writer.add_scalar('Validation/Loss', loss, n_iter)                        
+            loss, loss_total = criterion(enc_dec_cloud, lidarseg_gt)
+            writer.add_scalar('Validation/Loss', loss, n_iter)
+
+            pred_segmentation = torch.argmax(enc_dec_cloud, dim=1)
+            pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
+            avg_pixel_acc.update(pixel_acc)
+            avg_pixel_acc_per_class.update(pixel_acc_per_class)
+            avg_jacc.update(jacc)
+            avg_dice.update(dice)
+
             n_iter += 1
+
+        epoch_p_1 = epoch+1
+        writer.add_scalar('Validation/AvgPixelAccuracy', avg_pixel_acc.avg, epoch_p_1)
+        writer.add_scalar('Validation/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, epoch_p_1)
+        writer.add_scalar('Validation/AvgJaccardIndex', avg_jacc.avg, epoch_p_1)
+        writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)
     return n_iter
 
 def test_lidarseg(net, criterion, writer):
     all_decoded_clouds = [None] * test_size
     k = 0
+    avg_pixel_acc = AverageMeter()
+    avg_pixel_acc_per_class = AverageMeter()
+    avg_jacc = AverageMeter()
+    avg_dice = AverageMeter()
+    n_iter = 0
     net.eval()
-    with torch.no_grad():            
+    with torch.no_grad():
         for batch_idx, (cloud, lidarseg_gt) in enumerate(test_loader):
             cloud, lidarseg_gt = cloud.cuda().float(), lidarseg_gt.cuda().long()
             enc_dec_cloud = net(cloud)
+
+            pred_segmentation = torch.argmax(enc_dec_cloud, dim=1)
+            pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
+            avg_pixel_acc.update(pixel_acc)
+            avg_pixel_acc_per_class.update(pixel_acc_per_class)
+            avg_jacc.update(jacc)
+            avg_dice.update(dice)
+
+            writer.add_scalar('Test/PixelAccuracy', pixel_acc, n_iter)
+            writer.add_scalar('Test/PixelAccuracyPerClass', pixel_acc_per_class, n_iter)
+            writer.add_scalar('Test/JaccardIndex', jacc, n_iter)
+            writer.add_scalar('Test/DiceCoefficient', dice, n_iter)
+
             n_batch = enc_dec_cloud.shape[0]
             for i in range(0, n_batch):
                 all_decoded_clouds[k] = enc_dec_cloud.cpu().data.numpy()[i,:,:,:]
                 k = k + 1
-    return all_decoded_clouds            
+            n_iter += 1
+
+        writer.add_scalar('Test/AvgPixelAccuracy', avg_pixel_acc.avg, n_iter)
+        writer.add_scalar('Test/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, n_iter)
+        writer.add_scalar('Test/AvgJaccardIndex', avg_jacc.avg, n_iter)
+        writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)
+
+    return all_decoded_clouds
 
 
 # ## Training Loop
