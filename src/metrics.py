@@ -96,7 +96,7 @@ def eval_metrics(true, pred, num_classes):
         avg_jacc: the jaccard index.
         avg_dice: the dice coefficient.
     """
-    hist = torch.zeros((num_classes, num_classes))
+    hist = torch.zeros((num_classes, num_classes)).cuda()
     for t, p in zip(true, pred):
         hist += _fast_hist(t.flatten(), p.flatten(), num_classes)
     overall_acc = overall_pixel_accuracy(hist)
