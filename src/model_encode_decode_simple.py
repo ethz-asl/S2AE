@@ -32,7 +32,7 @@ class ModelEncodeDecodeSimple(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        self.features = [2, 10, 20, 60, 100, 120, n_classes]        
+        self.features = [2, 10, 20, 60, 100, 120, 160, n_classes]        
         self.bandwidths = [bandwidth, 70, 50, 40, 30, 20] 
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
@@ -41,6 +41,7 @@ class ModelEncodeDecodeSimple(nn.Module):
         grid_so3_3 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 24, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_4 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 16, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_5 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 8, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
+        grid_so3_6 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 4, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
 
 
         self.convolutional = nn.Sequential(
@@ -95,6 +96,16 @@ class ModelEncodeDecodeSimple(nn.Module):
             SO3Convolution(
                 nfeature_in  = self.features[5],
                 nfeature_out = self.features[6],
+                b_in  = self.bandwidths[5],
+                b_out = self.bandwidths[5],
+                b_inverse = self.bandwidths[5],
+                grid=grid_so3_5),
+            nn.PReLU(),
+            nn.BatchNorm3d(self.features[6], affine=True),
+            nn.Dropout(p=0.3),
+            SO3Convolution(
+                nfeature_in  = self.features[6],
+                nfeature_out = self.features[7],
                 b_in  = self.bandwidths[5],
                 b_out = self.bandwidths[5],
                 b_inverse = self.bandwidths[0],
