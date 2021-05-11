@@ -28,7 +28,7 @@ def so3_to_s2_integrate(x):
     assert x.size(-2) == x.size(-3)
     return torch.sum(x, dim=-1) * (2*np.pi/x.size(-1))
 
-class ModelEncodeDecodeSimple(nn.Module):
+class ModelFCN(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
