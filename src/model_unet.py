@@ -28,12 +28,12 @@ def so3_to_s2_integrate(x):
     assert x.size(-2) == x.size(-3)
     return torch.sum(x, dim=-1) * (2*np.pi/x.size(-1))
 
-class ModelEncodeDecodeSimple(nn.Module):
+class ModelUnet(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        self.features = [2, 10, 20, 60, 80, 100, 120, n_classes]        
-        self.bandwidths = [bandwidth, 70, 50, 30, 25, 15] 
+        self.features = [2, 10, 20, 30, 50, 90, 100, n_classes]        
+        self.bandwidths = [bandwidth, 30, 10, 30, bandwidth] 
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
@@ -43,8 +43,10 @@ class ModelEncodeDecodeSimple(nn.Module):
         grid_so3_5 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 8, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_6 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 4, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
 
+        
+        
 
-        self.convolutional = nn.Sequential(
+        self.conv1 = nn.Sequential(
             S2Convolution(
                 nfeature_in  = self.features[0],
                 nfeature_out = self.features[1],
@@ -53,7 +55,10 @@ class ModelEncodeDecodeSimple(nn.Module):
                 b_inverse = self.bandwidths[1],
                 grid=grid_s2),
             nn.PReLU(),
-            nn.BatchNorm3d(self.features[1], affine=True),
+            nn.BatchNorm3d(self.features[1], affine=True)
+        )
+        
+        self.conv2 = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.features[1],
                 nfeature_out = self.features[2],
@@ -63,58 +68,59 @@ class ModelEncodeDecodeSimple(nn.Module):
                 grid=grid_so3_1),
             nn.PReLU(),
             nn.BatchNorm3d(self.features[2], affine=True),
+        )
+        
+        self.conv3 = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.features[2],
                 nfeature_out = self.features[3],
                 b_in  = self.bandwidths[2],
-                b_out = self.bandwidths[3],
-                b_inverse = self.bandwidths[3],
+                b_out = self.bandwidths[2],
+                b_inverse = self.bandwidths[2],
                 grid=grid_so3_2),
             nn.PReLU(),
             nn.BatchNorm3d(self.features[3], affine=True),
-            SO3Convolution(
-                nfeature_in  = self.features[3],
-                nfeature_out = self.features[4],
-                b_in  = self.bandwidths[3],
-                b_out = self.bandwidths[4],
-                b_inverse = self.bandwidths[4],
-                grid=grid_so3_3),
-            nn.PReLU(),
-            nn.BatchNorm3d(self.features[4], affine=True),
+        )
+        
+        self.deconv1 = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.features[4],
                 nfeature_out = self.features[5],
-                b_in  = self.bandwidths[4],
-                b_out = self.bandwidths[5],
-                b_inverse = self.bandwidths[5],
-                grid=grid_so3_4),
+                b_in  = self.bandwidths[2],
+                b_out = self.bandwidths[2],
+                b_inverse = self.bandwidths[3],
+                grid=grid_so3_3),
             nn.PReLU(),
             nn.BatchNorm3d(self.features[5], affine=True),
         )
         
-        self.deconvolutional = nn.Sequential(
-            SO3Convolution(
-                nfeature_in  = self.features[5],
-                nfeature_out = self.features[6],
-                b_in  = self.bandwidths[5],
-                b_out = self.bandwidths[5],
-                b_inverse = self.bandwidths[5],
-                grid=grid_so3_5),
-            nn.PReLU(),
-            nn.BatchNorm3d(self.features[6], affine=True),
-            nn.Dropout(p=0.3),
+        self.deconv2 = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.features[6],
                 nfeature_out = self.features[7],
-                b_in  = self.bandwidths[5],
-                b_out = self.bandwidths[5],
-                b_inverse = self.bandwidths[0],
-                grid=grid_so3_5)            
+                b_in  = self.bandwidths[3],
+                b_out = self.bandwidths[3],
+                b_inverse = self.bandwidths[4],
+                grid=grid_so3_4)            
         )
         
         self.sm = nn.LogSoftmax(dim=1)
         
 
-    def forward(self, x1):
+    def forward(self, x):
         #return self.sm(self.deconvolutional(self.convolutional(x1)).max(-1)[0])
-        return self.sm(so3_to_s2_integrate(self.deconvolutional(self.convolutional(x1))))
+        #return self.sm(so3_to_s2_integrate(self.deconvolutional(self.convolutional(x1))))
+
+        e1 = self.conv1(x)
+        e2 = self.conv2(e1)
+        e3 = self.conv3(e2)
+        
+        x = torch.cat([e2, e3], dim=1)
+        
+        d1 = self.deconv1(x)
+        
+        x = torch.cat([e1, d1], dim=1)
+        
+        d2 = self.deconv2(x)
+        
+        return self.sm(so3_to_s2_integrate(d2))
