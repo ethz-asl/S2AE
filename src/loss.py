@@ -50,9 +50,13 @@ class NegativeLogLikelihoodLoss(nn.Module):
     def __init__(self, n_classes):
         super(NegativeLogLikelihoodLoss, self).__init__()        
         self.n_classes = n_classes
+        weights = np.array([0., 0.16366589, 0.157578, 0.1621299, 0.08124114, 0.12953149, 0.16657334, 0.13928024, 0.])
+        assert(self.n_classes == len(weights))
+        
+        self.weights = torch.from_numpy(weights).cuda().float()
         
     def forward(self, decoded, teacher, size_average=True, batch_all=True):
-        losses = F.nll_loss(decoded, teacher, weight=None, size_average=size_average)
+        losses = F.nll_loss(decoded, teacher, weight=self.weights, size_average=size_average)
 
         if size_average:
             if batch_all:

@@ -35,7 +35,7 @@ class ModelUnet(nn.Module):
         self.left_features = [2, 60, 80, 100]
         self.bottom_features = [100, 150, 100]
         self.right_features = [200, 80, 160, 60, 120, n_classes]
-        self.bandwidths = [bandwidth, 35, 20, 10, 20, 35, bandwidth]
+        self.bandwidths = [bandwidth, 35, 25, 10, 25, 35, bandwidth]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi / 64, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi / 64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
