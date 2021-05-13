@@ -62,14 +62,20 @@ img_filename = f"{export_ds}/images.npy"
 cloud_filename = f"{export_ds}/clouds1.npy"
 sem_clouds_filename = f"{export_ds}/sem_classes_gt1.npy"
 dec_clouds = f"{export_ds}/decoded.npy"
-dec_indices = f"{export_ds}/indices.npy"
+dec_gt = f"{export_ds}/decoded_gt.npy"
 
 print(f"Loading from images from {img_filename}, clouds from {cloud_filename} and sem clouds from {sem_clouds_filename}")
-img_features = np.load(img_filename)
+#img_features = np.load(img_filename)
+img_features = np.zeros((1,1,1))
 cloud_features = np.load(cloud_filename)
 sem_cloud_features = np.load(sem_clouds_filename)
 print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
+#n_process = 500
+# img_features = img_features[0:n_process, :, :, :]
+#cloud_features = cloud_features[0:n_process, :, :, :]
+#sem_cloud_features = sem_cloud_features[0:n_process, :, :]
+#print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
 # In[4]:
 
@@ -165,6 +171,8 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
 
 def test_lidarseg(net, criterion, writer):
     all_decoded_clouds = [None] * test_size
+    all_gt_clouds = [None] * test_size
+
     k = 0
     avg_pixel_acc = AverageMeter()
     avg_pixel_acc_per_class = AverageMeter()
@@ -192,6 +200,8 @@ def test_lidarseg(net, criterion, writer):
             n_batch = enc_dec_cloud.shape[0]
             for i in range(0, n_batch):
                 all_decoded_clouds[k] = enc_dec_cloud.cpu().data.numpy()[i,:,:,:]
+                all_gt_clouds[k] = lidarseg_gt.cpu().data.numpy()[i,:,:]
+
                 k = k + 1
             n_iter += 1
 
@@ -200,7 +210,7 @@ def test_lidarseg(net, criterion, writer):
         writer.add_scalar('Test/AvgJaccardIndex', avg_jacc.avg, n_iter)
         writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)
 
-    return all_decoded_clouds
+    return all_decoded_clouds, all_gt_clouds
 
 
 # ## Training Loop
@@ -227,10 +237,9 @@ torch.save(net.state_dict(), model_save)
 print("Starting testing...")
 
 torch.cuda.empty_cache()
-decoded_clouds = test_lidarseg(net, criterion, writer)
-test_indices = np.array(split.test_indices)
+decoded_clouds, gt_clouds = test_lidarseg(net, criterion, writer)
 
-np.save(dec_indices, test_indices)
+np.save(dec_gt, gt_clouds)
 np.save(dec_clouds, decoded_clouds)
 
 writer.close()
