@@ -32,7 +32,7 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 4.5e-3
-n_epochs = 20
+n_epochs = 30
 batch_size = 5
 num_workers = 32
 n_classes = 9
