@@ -6,10 +6,9 @@ from torch.nn.parameter import Parameter
 from torch.nn.modules import Module
 import matplotlib.pyplot as plt
 
-from s2cnn.soft.so3_fft import SO3_fft_real, SO3_ifft_real
+from s2cnn.soft.so3_fft import SO3_fft_real, SO3_ifft_real, so3_rfft
 from s2cnn.soft.s2_fft import S2_fft_real,s2_fft
-from s2cnn import so3_rft
-from s2cnn import s2_rft
+from s2cnn import s2_rft, so3_rft
 
 from utils import Utils
 
@@ -23,6 +22,7 @@ class SO3_spectral_pool(torch.autograd.Function):
         '''
         ctx.b_out = b_out
         ctx.b_in = x.size(-1) // 2
+        ctx.f_in = x.size(1)
 
         # Transform the input to the spherical domain.
         # Also, shift the DC component to the center.
@@ -39,17 +39,21 @@ class SO3_spectral_pool(torch.autograd.Function):
         X, _ = Utils.ifftshift(X)
         return SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
 
+    @staticmethod
+    def backward(ctx, grad_output):  # pylint: disable=W
+#         G = Utils.fftshift(grad_output)
+#         G[ctx.lb:ctx.ub] = torch.
+#         X = torch.zeros((samples, X.size(1), X.size(2), X.size(3)), device=torch.device('cuda:0'))
+#         return so3_ifft(grad_output, for_grad=True, b_out=self.b_in)[..., 0], None
+        return grad_output
+
 class SO3Pooling(Module):
-    def __init__(self, nfeature_in, nfeature_out, b_in, b_out):
+    def __init__(self, b_in, b_out):
         '''
-        :param nfeature_in: number of input fearures
-        :param nfeature_out: number of output features
         :param b_in: input bandwidth (precision of the input SOFT grid)
         :param b_out: output bandwidth
-        :param grid: points of the SO(3) group defining the kernel, tuple of (alpha, beta, gamma)'s
         '''
         super(SO3Pooling, self).__init__()
-        self.nfeature_in = nfeature_in
         self.b_in = b_in
         self.b_out = b_out
         assert self.b_out < self.b_in
@@ -59,7 +63,6 @@ class SO3Pooling(Module):
         :x:      [batch, feature_in,  beta, alpha, gamma]
         :return: [batch, feature_out, beta, alpha, gamma]
         '''
-        assert x.size(1) == self.nfeature_in
         assert x.size(2) == 2 * self.b_in
         assert x.size(3) == 2 * self.b_in
         assert x.size(4) == 2 * self.b_in
