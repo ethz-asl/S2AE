@@ -42,7 +42,8 @@ class Sphere:
         pcd_tree = o3d.geometry.KDTreeFlann(pcd)
 
         kNearestNeighbors = 1
-        features = np.zeros((2, grid.shape[1], grid.shape[2]))
+#         features = np.zeros((2, grid.shape[1], grid.shape[2]))
+        features = np.ones((2, grid.shape[1], grid.shape[2])) * (-1)
         dist_threshold = 0.3
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
@@ -58,8 +59,8 @@ class Sphere:
                     range_value = self.ranges[cur_idx]
                     intensity = self.intensity[cur_idx]
 
-                    range_value = range_value if not np.isnan(range_value) else 0
-                    intensity = intensity if not np.isnan(intensity) else 0
+                    range_value = range_value if not np.isnan(range_value) else -1
+                    intensity = intensity if not np.isnan(intensity) else -1
 
                     features[0, i, j] = range_value
                     features[1, i, j] = intensity
