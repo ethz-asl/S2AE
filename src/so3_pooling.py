@@ -54,7 +54,7 @@ class SO3_spectral_pool(torch.autograd.Function):
 
         # Shift the signals back and perform a inverse transform.
         X, _ = Utils.ifftshift(Y)
-        return SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
+        return SO3_ifft_real.apply(X), None  # [batch, feature_out, beta, alpha, gamma]
 
 class SO3Pooling(Module):
     def __init__(self, b_in, b_out):

@@ -54,7 +54,7 @@ class SO3_spectral_unpool(torch.autograd.Function):
         X = X[ctx.lb:ctx.ub, :, :, :]
 
         X, _ = Utils.ifftshift(X)
-        return SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
+        return SO3_ifft_real.apply(X), None  # [batch, feature_out, beta, alpha, gamma]
 
 class SO3Unpooling(Module):
     def __init__(self, b_in, b_out):
