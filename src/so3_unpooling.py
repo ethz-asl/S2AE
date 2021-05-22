@@ -26,26 +26,35 @@ class SO3_spectral_unpool(torch.autograd.Function):
 
         # Transform the input to the spherical domain.
         # Also, shift the DC component to the center.
-        x = so3_rfft(x, b_out=ctx.b_in)
-        X, _ = Utils.fftshift(x)
+        X = so3_rfft(x, b_out=ctx.b_in)
+        X, _ = Utils.fftshift(X)
 
         # Zero-pad the signal to the bigger size.
         samples = Utils.compute_samples_SO3(b_out)
         center = samples // 2
-        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)), device=torch.device('cuda:0'))
         lhs,rhs = Utils.compute_bounds_SO3(ctx.b_in)
 
         ctx.lb = int(center - lhs)
         ctx.ub = int(center + rhs)
+        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)), device=torch.device('cuda:0'))
         Y[ctx.lb:ctx.ub, :, :, :] = X[:,:,:,:]
 
         # Shift the signals back and perform a inverse transform.
         X, _ = Utils.ifftshift(Y)
         return SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
-    
+
     @staticmethod
     def backward(ctx, grad_output):  # pylint: disable=W
-        return grad_output
+        X = so3_rfft(grad_output, b_out=ctx.b_out)
+        X, center = Utils.fftshift(X)
+
+        lhs,rhs = Utils.compute_bounds_SO3(ctx.b_in)
+        ctx.lb = int(center - lhs)
+        ctx.ub = int(center + rhs)
+        X = X[ctx.lb:ctx.ub, :, :, :]
+
+        X, _ = Utils.ifftshift(X)
+        return SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
 
 class SO3Unpooling(Module):
     def __init__(self, b_in, b_out):
