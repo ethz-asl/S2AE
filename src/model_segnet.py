@@ -34,8 +34,8 @@ class ModelSegnet(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        self.features = [2, 8, 16, 32, 64, 32, 16, 8, n_classes]        
-        self.bandwidths = [bandwidth, 50, 30, 10, 8, 5, 8, 10, 30, 50, bandwidth] 
+        self.features = [2, 16, 32, 64, 128, 64, 32, 16, n_classes]        
+        self.bandwidths = [bandwidth, 60, 30, 15, 10, 8, 10, 15, 30, 60, bandwidth] 
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/160, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
