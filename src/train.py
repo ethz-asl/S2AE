@@ -18,7 +18,8 @@ from training_set import TrainingSetLidarSeg
 from loss import *
 # from model_simple_for_testing import ModelSimpleForTesting
 # from model_fcn import ModelFCN
-from model_unet import ModelUnet
+# from model_unet import ModelUnet
+from model_segnet import ModelSegnet
 from sphere import Sphere
 from visualize import Visualize
 from metrics import *
@@ -32,14 +33,15 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 4.5e-3
-n_epochs = 20
-batch_size = 5
+n_epochs = 30
+batch_size = 3
 num_workers = 32
 n_classes = 9
 
 print(f"Initializing data structures...")
 # net = ModelSimpleForTesting(bandwidth=bandwidth, n_classes=n_classes).cuda()
-net = ModelUnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
+# net = ModelUnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
+net = ModelSegnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
 
 optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
 
