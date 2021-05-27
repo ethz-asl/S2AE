@@ -14,7 +14,7 @@ from s2cnn import s2_rft
 from utils import Utils
 
 
-class SO3_spectral_unpool(torch.autograd.Function):
+class SO3_spectral_unpool_symmetric(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, b_out=None):  # pylint: disable=W
         '''
@@ -55,6 +55,44 @@ class SO3_spectral_unpool(torch.autograd.Function):
 
         X, _ = Utils.ifftshift(X)
         return SO3_ifft_real.apply(X), None  # [batch, feature_out, beta, alpha, gamma]
+    
+class SO3_spectral_unpool_left(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, b_out=None):  # pylint: disable=W
+        '''
+        :param ctx: context
+        :param x: input data [batch, feature_in, beta, alpha, gamma]
+        '''
+        ctx.b_out = b_out
+        ctx.b_in = x.size(-1) // 2
+
+        # Transform the input to the spherical domain.
+        # Also, shift the DC component to the center.
+        X = so3_rfft(x, b_out=ctx.b_in)
+
+        # Zero-pad the signal to the bigger size.
+        samples = Utils.compute_samples_SO3(b_out)
+        lhs,rhs = Utils.compute_bounds_SO3_left_full(ctx.b_in)
+
+        ctx.lb = lhs
+        ctx.ub = rhs
+        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)), device=torch.device('cuda:0'))
+        Y[ctx.lb:ctx.ub, :, :, :] = X[:,:,:,:]
+
+        # Shift the signals back and perform a inverse transform.
+        return SO3_ifft_real.apply(Y)  # [batch, feature_out, beta, alpha, gamma]
+
+    @staticmethod
+    def backward(ctx, grad_output):  # pylint: disable=W
+        X = so3_rfft(grad_output, b_out=ctx.b_out)
+        X, center = Utils.fftshift(X)
+
+        lhs,rhs = Utils.compute_bounds_SO3_left_full(ctx.b_in)
+        ctx.lb = lhs
+        ctx.ub = rhs
+        X = X[ctx.lb:ctx.ub, :, :, :]
+
+        return SO3_ifft_real.apply(X), None  # [batch, feature_out, beta, alpha, gamma]
 
 class SO3Unpooling(Module):
     def __init__(self, b_in, b_out):
@@ -75,7 +113,7 @@ class SO3Unpooling(Module):
         assert x.size(2) == 2 * self.b_in
         assert x.size(3) == 2 * self.b_in
         assert x.size(4) == 2 * self.b_in
-        return SO3_spectral_unpool.apply(x, self.b_out)
+        return SO3_spectral_unpool_symmetric.apply(x, self.b_out)
 
 if __name__ == "__main__":
     b_in = 30
