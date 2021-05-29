@@ -12,7 +12,7 @@ from s2cnn import s2_rft, so3_rft
 
 from utils import Utils
 
-class SO3_spectral_pool(torch.autograd.Function):
+class SO3_spectral_pool_symmetric(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, b_out=None):  # pylint: disable=W
         '''
@@ -55,6 +55,41 @@ class SO3_spectral_pool(torch.autograd.Function):
         # Shift the signals back and perform a inverse transform.
         X, _ = Utils.ifftshift(Y)
         return SO3_ifft_real.apply(X), None  # [batch, feature_out, beta, alpha, gamma]
+    
+class SO3_spectral_pool_left(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, b_out=None):  # pylint: disable=W
+        '''
+        :param ctx: context
+        :param x: input data [batch, feature_in, beta, alpha, gamma]
+        '''
+        ctx.b_out = b_out
+        ctx.b_in = x.size(-1) // 2
+        ctx.f_in = x.size(1)
+
+        # Transform the input to the spherical domain.
+        X = so3_rfft(x, b_out=ctx.b_in)
+
+        # Low-pass filter the signal.
+        lhs,rhs = Utils.compute_bounds_SO3_left_full(b_out)
+        ctx.lb = lhs
+        ctx.ub = rhs
+        X = X[ctx.lb:ctx.ub, :, :, :]
+
+        # Perform a inverse transform.
+        return SO3_ifft_real.apply(X)  # [batch, feature_out, beta, alpha, gamma]
+
+    @staticmethod
+    def backward(ctx, grad_output):  # pylint: disable=W
+        X = so3_rfft(grad_output, b_out=ctx.b_out)
+
+        # Zero-pad the signal to the bigger size.
+        samples = Utils.compute_samples_SO3(ctx.b_in)
+        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)), device=torch.device('cuda:0'))
+        Y[ctx.lb:ctx.ub, :, :, :] = X[:,:,:,:]
+
+        # Perform an inverse transform.
+        return SO3_ifft_real.apply(Y), None  # [batch, feature_out, beta, alpha, gamma]
 
 class SO3Pooling(Module):
     def __init__(self, b_in, b_out):
@@ -75,7 +110,7 @@ class SO3Pooling(Module):
         assert x.size(2) == 2 * self.b_in
         assert x.size(3) == 2 * self.b_in
         assert x.size(4) == 2 * self.b_in
-        return SO3_spectral_pool.apply(x, self.b_out)
+        return SO3_spectral_pool_symmetric.apply(x, self.b_out)
 
 def plot_signal(X):
     F0 = X[:,0,0,:]

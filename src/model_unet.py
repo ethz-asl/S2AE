@@ -42,8 +42,6 @@ class ModelUnet(nn.Module):
         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi / 32, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_3 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi / 24, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_4 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi / 24, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        grid_so3_5 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi / 32, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        grid_so3_6 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi / 64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         
         # --- Left layers ------------------------------------------------------------
         
@@ -118,7 +116,7 @@ class ModelUnet(nn.Module):
                 b_in  = self.bandwidths[3],
                 b_out = self.bandwidths[3],
                 b_inverse = self.bandwidths[4],
-                grid=grid_so3_4),
+                grid=grid_so3_2),
             nn.PReLU(),
             nn.BatchNorm3d(self.right_features[1], affine=True),
         )
@@ -130,7 +128,7 @@ class ModelUnet(nn.Module):
                 b_in  = self.bandwidths[4],
                 b_out = self.bandwidths[4],
                 b_inverse = self.bandwidths[5],
-                grid=grid_so3_5),
+                grid=grid_so3_1),
             nn.PReLU(),
             nn.BatchNorm3d(self.right_features[3], affine=True),
         )
@@ -142,7 +140,7 @@ class ModelUnet(nn.Module):
                 b_in  = self.bandwidths[5],
                 b_out = self.bandwidths[5],
                 b_inverse = self.bandwidths[6],
-                grid=grid_so3_6)            
+                grid=grid_so3_4)            
         )
         
         self.sm = nn.LogSoftmax(dim=1)

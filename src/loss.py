@@ -52,7 +52,7 @@ class NegativeLogLikelihoodLoss(nn.Module):
         self.n_classes = n_classes
 #         weights = np.array([0., 0.16366589, 0.157578, 0.1621299, 0.08124114, 0.12953149, 0.16657334, 0.13928024, 0.])
         weights = np.array([0.03203128, 0.12453853, 0.12360233, 0.12430233, 0.1118631,  0.11928928, 0.12498565, 0.12078846, 0.11859904])
-        #weights = np.array([1.00000e+00, 2.01360e+02, 6.64800e+01, 1.33180e+02, 7.07000e+00, 1.62700e+01, 6.47408e+03, 2.18100e+01, 1.45200e+01])
+#         weights = np.array([1.00000e+00, 2.01360e+02, 6.64800e+01, 1.33180e+02, 7.07000e+00, 1.62700e+01, 6.47408e+03, 2.18100e+01, 1.45200e+01])
         assert(self.n_classes == len(weights))
         
         self.weights = torch.from_numpy(weights).cuda().float()

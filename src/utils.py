@@ -41,6 +41,17 @@ class Utils:
         upper_bound = int(np.ceil(half_samples))
 
         return lower_bound, upper_bound
+    
+    @staticmethod
+    def compute_bounds_SO3_left_full(bw):
+        '''
+        Computes the lower and upper bounds such that the Bw fits between them.
+        '''
+        samples = Utils.compute_samples_SO3(bw)
+        lower_bound = 0
+        upper_bound = int(samples)
+
+        return lower_bound, upper_bound
 
 if __name__ == "__main__":
     bw = 30
