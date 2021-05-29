@@ -20,6 +20,7 @@ from loss import *
 # from model_fcn import ModelFCN
 # from model_unet import ModelUnet
 from model_segnet import ModelSegnet
+from model import Model
 from sphere import Sphere
 from visualize import Visualize
 from metrics import *
@@ -32,8 +33,8 @@ torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 100
-learning_rate = 5e-4
-n_epochs = 30
+learning_rate = 1e-3
+n_epochs = 20
 batch_size = 5
 num_workers = 32
 n_classes = 9
@@ -41,9 +42,11 @@ n_classes = 9
 print(f"Initializing data structures...")
 # net = ModelSimpleForTesting(bandwidth=bandwidth, n_classes=n_classes).cuda()
 # net = ModelUnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
-net = ModelSegnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
+# net = ModelSegnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
+net = Model(bandwidth=bandwidth, n_classes=n_classes).cuda()
 
-optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
+#optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
+optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
 # criterion = L2Loss(alpha=0.5, margin=0.2)
 # criterion = CrossEntropyLoss(n_classes=n_classes)
@@ -60,9 +63,14 @@ print(f"All instances initialized.")
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
 export_ds = '/media/scratch/berlukas/nuscenes'
+
+# training
 img_filename = f"{export_ds}/images.npy"
 cloud_filename = f"{export_ds}/clouds1.npy"
-sem_clouds_filename = f"{export_ds}/sem_classes_gt1.npy"
+sem_clouds_filename = f"{export_ds}/new_sem_classes_gt1.npy"
+
+# testing
+dec_input = f"{export_ds}/decoded_input.npy"
 dec_clouds = f"{export_ds}/decoded.npy"
 dec_gt = f"{export_ds}/decoded_gt.npy"
 
@@ -73,8 +81,8 @@ cloud_features = np.load(cloud_filename)
 sem_cloud_features = np.load(sem_clouds_filename)
 print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
-#n_process = 500
-# img_features = img_features[0:n_process, :, :, :]
+#n_process = 30
+#img_features = img_features[0:n_process, :, :, :]
 #cloud_features = cloud_features[0:n_process, :, :, :]
 #sem_cloud_features = sem_cloud_features[0:n_process, :, :]
 #print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
@@ -172,9 +180,9 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     return n_iter
 
 def test_lidarseg(net, criterion, writer):
+    all_input_clouds = [None] * test_size
     all_decoded_clouds = [None] * test_size
     all_gt_clouds = [None] * test_size
-
     k = 0
     avg_pixel_acc = AverageMeter()
     avg_pixel_acc_per_class = AverageMeter()
@@ -201,9 +209,9 @@ def test_lidarseg(net, criterion, writer):
 
             n_batch = enc_dec_cloud.shape[0]
             for i in range(0, n_batch):
+                all_input_clouds[k] = cloud.cpu().data.numpy()[i,:,:,:]
                 all_decoded_clouds[k] = enc_dec_cloud.cpu().data.numpy()[i,:,:,:]
                 all_gt_clouds[k] = lidarseg_gt.cpu().data.numpy()[i,:,:]
-
                 k = k + 1
             n_iter += 1
 
@@ -212,7 +220,7 @@ def test_lidarseg(net, criterion, writer):
         writer.add_scalar('Test/AvgJaccardIndex', avg_jacc.avg, n_iter)
         writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)
 
-    return all_decoded_clouds, all_gt_clouds
+    return all_input_clouds, all_decoded_clouds, all_gt_clouds
 
 
 # ## Training Loop
@@ -239,8 +247,9 @@ torch.save(net.state_dict(), model_save)
 print("Starting testing...")
 
 torch.cuda.empty_cache()
-decoded_clouds, gt_clouds = test_lidarseg(net, criterion, writer)
+input_clouds, decoded_clouds, gt_clouds = test_lidarseg(net, criterion, writer)
 
+np.save(dec_input, input_clouds)
 np.save(dec_gt, gt_clouds)
 np.save(dec_clouds, decoded_clouds)
 
