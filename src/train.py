@@ -93,7 +93,7 @@ print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape
 # Initialize the data loaders
 train_set = TrainingSetLidarSeg(bandwidth, cloud_features, sem_cloud_features)
 print(f"Total size of the training set: {len(train_set)}")
-split = DataSplitter(train_set, False, test_train_split=0.9, shuffle=True)
+split = DataSplitter(train_set, False, test_train_split=0.95, shuffle=True)
 
 # Split the data into train, val and optionally test
 train_loader, val_loader, test_loader = split.get_split(
