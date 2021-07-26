@@ -50,7 +50,8 @@ optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
 # criterion = L2Loss(alpha=0.5, margin=0.2)
 # criterion = CrossEntropyLoss(n_classes=n_classes)
-criterion = NegativeLogLikelihoodLoss(n_classes=n_classes)
+# criterion = NegativeLogLikelihoodLoss(n_classes=n_classes)
+criterion = MainLoss()
 
 writer = SummaryWriter()
 model_save = 'test_training_params.pkl'
@@ -59,7 +60,6 @@ print(f"All instances initialized.")
 
 
 # ## Load the dataset
-
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
 export_ds = '/media/scratch/berlukas/nuscenes'
@@ -81,13 +81,33 @@ cloud_features = np.load(cloud_filename)
 sem_cloud_features = np.load(sem_clouds_filename)
 print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
+
+# training 2
+# cloud_filename = f"{export_ds}/clouds2.npy"
+# sem_clouds_filename = f"{export_ds}/new_sem_classes_gt2.npy"
+
+# cloud_features_2 = np.load(cloud_filename)
+# sem_cloud_features_2 = np.load(sem_clouds_filename)
+# print(f"Shape of clouds (2) is {cloud_features_2.shape} and sem clouds (2) is {sem_cloud_features_2.shape}")
+
+# training 3
+# cloud_filename = f"{export_ds}/clouds3.npy"
+# sem_clouds_filename = f"{export_ds}/new_sem_classes_gt3.npy"
+
+# cloud_features_3 = np.load(cloud_filename)
+# sem_cloud_features_3 = np.load(sem_clouds_filename)
+# print(f"Shape of clouds (3) is {cloud_features_3.shape} and sem clouds (3) is {sem_cloud_features_3.shape}")
+
+# cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
+# sem_cloud_features = np.concatenate((sem_cloud_features, sem_cloud_features_2, sem_cloud_features_3))
+
+# print(f"Shape of the final clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
+
 #n_process = 30
 #img_features = img_features[0:n_process, :, :, :]
 #cloud_features = cloud_features[0:n_process, :, :, :]
 #sem_cloud_features = sem_cloud_features[0:n_process, :, :]
 #print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
-
-# In[4]:
 
 
 # Initialize the data loaders
@@ -109,9 +129,6 @@ if test_size == 0:
     print('Test size is 0. Configured for external tests')
 else:
     print("Testing size: ", test_size)
-
-
-# In[6]:
 
 
 def adjust_learning_rate_exp(optimizer, epoch_num, lr):
