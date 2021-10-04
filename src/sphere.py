@@ -7,13 +7,34 @@ import sys
 from tqdm.auto import tqdm
 
 class Sphere:
-    def __init__(self, point_cloud=None, bw=None, features=None):
+    def __init__(self, point_cloud=None, bw=None, features=None, filter=False):
         if point_cloud is not None:
+            if filter: 
+                point_cloud = self.filter_outliers_from_cloud(point_cloud)
             self.point_cloud = point_cloud
             (self.sphere, self.ranges) = self.__projectPointCloudOnSphere(point_cloud)
             self.intensity = point_cloud[:,3]
+            self.normals = self.estimate_normals(point_cloud)
         elif bw is not None and features is not None:
             self.constructFromFeatures(bw, features)
+            
+    def filter_outliers_from_cloud(self, pcl, neighbors=30, std=2.0):
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(pcl[:, 0:3])
+        _, ind = pcd.remove_statistical_outlier(nb_neighbors=neighbors, std_ratio=std)
+        return np.take(pcl, ind, axis=0)
+            
+    def estimate_normals(self, pcl):
+        pcd = o3d.geometry.PointCloud()        
+        pcd.points = o3d.utility.Vector3dVector(pcl[:, 0:3])        
+        params = o3d.geometry.KDTreeSearchParamHybrid(radius=0.3, max_nn=50)        
+        pcd.estimate_normals(search_param=params)        
+        pcd.orient_normals_to_align_with_direction()
+        assert pcd.has_normals()        
+
+        normals = np.asarray(pcd.normals)
+        angle = np.abs(normals[:,0]) + np.abs(normals[:,1])
+        return angle
 
     def constructFromFeatures(self, bw, features):
         self.point_cloud = None
@@ -28,6 +49,7 @@ class Sphere:
             for j in range(n_grid):
                 self.ranges[cur_idx] = features[0, i, j]
                 self.intensity[cur_idx] = features[1, i, j]
+                self.normals[cur_idx] = features[2, i, j]
                 cur_idx = cur_idx + 1
 
     def getProjectedInCartesian(self):
@@ -43,7 +65,7 @@ class Sphere:
 
         kNearestNeighbors = 1
 #         features = np.zeros((2, grid.shape[1], grid.shape[2]))
-        features = np.ones((2, grid.shape[1], grid.shape[2])) * (-1)
+        features = np.ones((3, grid.shape[1], grid.shape[2])) * (-1)
         dist_threshold = 0.3
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
@@ -58,12 +80,15 @@ class Sphere:
 
                     range_value = self.ranges[cur_idx]
                     intensity = self.intensity[cur_idx]
+                    normal_angle = self.normals[cur_idx]
 
                     range_value = range_value if not np.isnan(range_value) else -1
                     intensity = intensity if not np.isnan(intensity) else -1
+                    normal_angle = normal_angle if not np.isnan(normal_angle) else -1
 
                     features[0, i, j] = range_value
                     features[1, i, j] = intensity
+                    features[2, i, j] = normal_angle
 
         return features
 
@@ -75,7 +100,7 @@ class Sphere:
         sphere_tree = spatial.cKDTree(cart_sphere[:,0:3])
         p_norm = 2
         n_nearest_neighbors = 1
-        features = np.zeros((2, grid.shape[1], grid.shape[2]))
+        features = np.zeros((3, grid.shape[1], grid.shape[2]))
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
                 nn_dists, nn_indices = sphere_tree.query(cart_grid[:, i, j], p = p_norm, k = n_nearest_neighbors)
@@ -85,6 +110,7 @@ class Sphere:
                 for cur_idx in nn_indices:
                     features[0, i, j] = self.ranges[cur_idx]
                     features[1, i, j] = self.intensity[cur_idx]
+                    features[2, i, j] = self.normals[cur_idx]
 
         return features
 
