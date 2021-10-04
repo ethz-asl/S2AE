@@ -5,6 +5,7 @@ from scipy import spatial
 import open3d as o3d
 import sys
 from tqdm.auto import tqdm
+from semantic_classes import SemanticClasses
 
 class Sphere:
     def __init__(self, point_cloud=None, bw=None, features=None, filter=False):
@@ -15,8 +16,17 @@ class Sphere:
             (self.sphere, self.ranges) = self.__projectPointCloudOnSphere(point_cloud)
             self.intensity = point_cloud[:,3]
             self.normals = self.estimate_normals(point_cloud)
+            self.semantics = []
+            if point_cloud.shape[1] >= 5: 
+                print('Input data has semantics.')
+                self.semantics = point_cloud[:,4]
+            else:
+                print('Input data has no semantics.')
         elif bw is not None and features is not None:
             self.constructFromFeatures(bw, features)
+            
+    def has_semantics(self):
+        return len(self.semantics) > 0
             
     def filter_outliers_from_cloud(self, pcl, neighbors=30, std=2.0):
         pcd = o3d.geometry.PointCloud()
@@ -44,12 +54,19 @@ class Sphere:
 
         self.ranges = np.empty([n_points, 1])
         self.intensity = np.empty([n_points, 1])
+        self.normals = np.empty([n_points, 1])
+        
+        has_semantics = features.shape[0] == 4
+        if has_semantics:
+            self.semantics = np.empty([n_points, 1])
         cur_idx = 0
         for i in range(n_grid):
             for j in range(n_grid):
                 self.ranges[cur_idx] = features[0, i, j]
                 self.intensity[cur_idx] = features[1, i, j]
                 self.normals[cur_idx] = features[2, i, j]
+                if has_semantics:
+                    self.semantics[cur_idx] = features[3, i, j]
                 cur_idx = cur_idx + 1
 
     def getProjectedInCartesian(self):
@@ -65,7 +82,11 @@ class Sphere:
 
         kNearestNeighbors = 1
 #         features = np.zeros((2, grid.shape[1], grid.shape[2]))
-        features = np.ones((3, grid.shape[1], grid.shape[2])) * (-1)
+        has_semantics = self.has_semantics()
+        if has_semantics:
+            features = np.ones((4, grid.shape[1], grid.shape[2])) * (-1)
+        else:
+            features = np.ones((3, grid.shape[1], grid.shape[2])) * (-1)
         dist_threshold = 0.3
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
@@ -89,6 +110,11 @@ class Sphere:
                     features[0, i, j] = range_value
                     features[1, i, j] = intensity
                     features[2, i, j] = normal_angle
+                    
+                    if has_semantics:
+                        semantics = self.semantics[cur_idx]
+                        semantics = SemanticClasses.map_sem_kitti_label(semantics) if not np.isnan(semantics) else -1
+                        features[3, i, j] = semantics
 
         return features
 
