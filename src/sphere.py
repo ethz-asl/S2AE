@@ -18,10 +18,7 @@ class Sphere:
             self.normals = self.estimate_normals(point_cloud)
             self.semantics = []
             if point_cloud.shape[1] >= 5: 
-                print('Input data has semantics.')
                 self.semantics = point_cloud[:,4]
-            else:
-                print('Input data has no semantics.')
         elif bw is not None and features is not None:
             self.constructFromFeatures(bw, features)
             
@@ -117,29 +114,6 @@ class Sphere:
                         features[3, i, j] = semantics
 
         return features
-
-    def sampleUsingGrid2(self, grid):
-        cart_sphere = self.__convertSphericalToEuclidean(self.sphere)
-        cart_grid = DHGrid.ConvertGridToEuclidean(grid)
-
-        sys.setrecursionlimit(50000)
-        sphere_tree = spatial.cKDTree(cart_sphere[:,0:3])
-        p_norm = 2
-        n_nearest_neighbors = 1
-        features = np.zeros((3, grid.shape[1], grid.shape[2]))
-        for i in range(grid.shape[1]):
-            for j in range(grid.shape[2]):
-                nn_dists, nn_indices = sphere_tree.query(cart_grid[:, i, j], p = p_norm, k = n_nearest_neighbors)
-                nn_indices = [nn_indices] if n_nearest_neighbors == 1 else nn_indices
-
-                # TODO(lbern): Average over all neighbors
-                for cur_idx in nn_indices:
-                    features[0, i, j] = self.ranges[cur_idx]
-                    features[1, i, j] = self.intensity[cur_idx]
-                    features[2, i, j] = self.normals[cur_idx]
-
-        return features
-
 
     def __projectPointCloudOnSphere(self, cloud):
         # sqrt(x^2+y^2+z^2)
