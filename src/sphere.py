@@ -5,15 +5,43 @@ from scipy import spatial
 import open3d as o3d
 import sys
 from tqdm.auto import tqdm
+from semantic_classes import SemanticClasses
 
 class Sphere:
-    def __init__(self, point_cloud=None, bw=None, features=None):
+    def __init__(self, point_cloud=None, bw=None, features=None, filter=False):
         if point_cloud is not None:
+            if filter: 
+                point_cloud = self.filter_outliers_from_cloud(point_cloud)
             self.point_cloud = point_cloud
             (self.sphere, self.ranges) = self.__projectPointCloudOnSphere(point_cloud)
             self.intensity = point_cloud[:,3]
+            self.normals = self.estimate_normals(point_cloud)
+            self.semantics = []
+            if point_cloud.shape[1] >= 5: 
+                self.semantics = point_cloud[:,4]
         elif bw is not None and features is not None:
             self.constructFromFeatures(bw, features)
+            
+    def has_semantics(self):
+        return len(self.semantics) > 0
+            
+    def filter_outliers_from_cloud(self, pcl, neighbors=30, std=2.0):
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(pcl[:, 0:3])
+        _, ind = pcd.remove_statistical_outlier(nb_neighbors=neighbors, std_ratio=std)
+        return np.take(pcl, ind, axis=0)
+            
+    def estimate_normals(self, pcl):
+        pcd = o3d.geometry.PointCloud()        
+        pcd.points = o3d.utility.Vector3dVector(pcl[:, 0:3])        
+        params = o3d.geometry.KDTreeSearchParamHybrid(radius=0.3, max_nn=50)        
+        pcd.estimate_normals(search_param=params)        
+        pcd.orient_normals_to_align_with_direction()
+        assert pcd.has_normals()        
+
+        normals = np.asarray(pcd.normals)
+        angle = np.abs(normals[:,0]) + np.abs(normals[:,1])
+        return angle
 
     def constructFromFeatures(self, bw, features):
         self.point_cloud = None
@@ -23,11 +51,19 @@ class Sphere:
 
         self.ranges = np.empty([n_points, 1])
         self.intensity = np.empty([n_points, 1])
+        self.normals = np.empty([n_points, 1])
+        
+        has_semantics = features.shape[0] == 4
+        if has_semantics:
+            self.semantics = np.empty([n_points, 1])
         cur_idx = 0
         for i in range(n_grid):
             for j in range(n_grid):
                 self.ranges[cur_idx] = features[0, i, j]
                 self.intensity[cur_idx] = features[1, i, j]
+                self.normals[cur_idx] = features[2, i, j]
+                if has_semantics:
+                    self.semantics[cur_idx] = features[3, i, j]
                 cur_idx = cur_idx + 1
 
     def getProjectedInCartesian(self):
@@ -43,7 +79,11 @@ class Sphere:
 
         kNearestNeighbors = 1
 #         features = np.zeros((2, grid.shape[1], grid.shape[2]))
-        features = np.ones((2, grid.shape[1], grid.shape[2])) * (-1)
+        has_semantics = self.has_semantics()
+        if has_semantics:
+            features = np.ones((4, grid.shape[1], grid.shape[2])) * (-1)
+        else:
+            features = np.ones((3, grid.shape[1], grid.shape[2])) * (-1)
         dist_threshold = 0.3
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
@@ -58,36 +98,22 @@ class Sphere:
 
                     range_value = self.ranges[cur_idx]
                     intensity = self.intensity[cur_idx]
+                    normal_angle = self.normals[cur_idx]
 
                     range_value = range_value if not np.isnan(range_value) else -1
                     intensity = intensity if not np.isnan(intensity) else -1
+                    normal_angle = normal_angle if not np.isnan(normal_angle) else -1
 
                     features[0, i, j] = range_value
                     features[1, i, j] = intensity
+                    features[2, i, j] = normal_angle
+                    
+                    if has_semantics:
+                        semantics = self.semantics[cur_idx]
+                        semantics = SemanticClasses.map_sem_kitti_label(semantics) if not np.isnan(semantics) else -1
+                        features[3, i, j] = semantics
 
         return features
-
-    def sampleUsingGrid2(self, grid):
-        cart_sphere = self.__convertSphericalToEuclidean(self.sphere)
-        cart_grid = DHGrid.ConvertGridToEuclidean(grid)
-
-        sys.setrecursionlimit(50000)
-        sphere_tree = spatial.cKDTree(cart_sphere[:,0:3])
-        p_norm = 2
-        n_nearest_neighbors = 1
-        features = np.zeros((2, grid.shape[1], grid.shape[2]))
-        for i in range(grid.shape[1]):
-            for j in range(grid.shape[2]):
-                nn_dists, nn_indices = sphere_tree.query(cart_grid[:, i, j], p = p_norm, k = n_nearest_neighbors)
-                nn_indices = [nn_indices] if n_nearest_neighbors == 1 else nn_indices
-
-                # TODO(lbern): Average over all neighbors
-                for cur_idx in nn_indices:
-                    features[0, i, j] = self.ranges[cur_idx]
-                    features[1, i, j] = self.intensity[cur_idx]
-
-        return features
-
 
     def __projectPointCloudOnSphere(self, cloud):
         # sqrt(x^2+y^2+z^2)

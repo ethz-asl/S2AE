@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import open3d as o3d
 
 class Utils:
 
@@ -52,6 +53,14 @@ class Utils:
         upper_bound = int(samples)
 
         return lower_bound, upper_bound
+    
+    @staticmethod
+    def transform_pointcloud(cloud, T):
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(cloud[:, 0:3])
+        pcd.transform(T)
+        dst = np.asarray(pcd.points)
+        return np.column_stack((dst, cloud[:, 3], cloud[:, 4], cloud[:, 5]))
 
 if __name__ == "__main__":
     bw = 30
