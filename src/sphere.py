@@ -20,6 +20,7 @@ class Sphere:
             self.semantics = []
             if point_cloud.shape[1] >= 5: 
                 self.semantics = point_cloud[:,4]
+            self.sampling_grid = []
         elif bw is not None and features is not None:
             self.constructFromFeatures(bw, features)
             
@@ -89,12 +90,12 @@ class Sphere:
         has_semantics = self.has_semantics()
         has_normals = self.has_normals()
         n_features = 4
-        if not has_semantics:
+        if not has_semantics:            
             n_features = n_features - 1
-        if not has_normals:
+        if not has_normals:            
             n_features = n_features - 1
-            
         features = np.ones((n_features, grid.shape[1], grid.shape[2])) * (-1)
+        
         dist_threshold = 0.3
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
@@ -126,7 +127,7 @@ class Sphere:
                         semantics = self.semantics[cur_idx]
                         semantics = SemanticClasses.map_sem_kitti_label(semantics) if not np.isnan(semantics) else -1
                         features[feature_idx, i, j] = semantics
-
+        
         return features
 
     def __projectPointCloudOnSphere(self, cloud):
