@@ -8,7 +8,7 @@ from tqdm.auto import tqdm
 from semantic_classes import SemanticClasses
 
 class Sphere:
-    def __init__(self, point_cloud=None, bw=None, features=None, filter=False):
+    def __init__(self, point_cloud=None, bw=None, features=None, filter=False, normals=False):
         if point_cloud is not None:
             if filter: 
                 point_cloud = self.filter_outliers_from_cloud(point_cloud)
@@ -16,7 +16,8 @@ class Sphere:
             (self.sphere, self.ranges) = self.__projectPointCloudOnSphere(point_cloud)
             self.intensity = point_cloud[:,3]
             self.normals = []
-            self.normals = self._estimate_normals(point_cloud)
+            if normals:
+                self.normals = self._estimate_normals(point_cloud)
             self.semantics = []
             if point_cloud.shape[1] >= 5: 
                 self.semantics = point_cloud[:,4]
@@ -42,9 +43,9 @@ class Sphere:
     def _estimate_normals(self, pcl):
         pcd = o3d.geometry.PointCloud()        
         pcd.points = o3d.utility.Vector3dVector(pcl[:, 0:3])        
-#         params = o3d.geometry.KDTreeSearchParamHybrid(radius=0.3, max_nn=50)        
-#         pcd.estimate_normals(search_param=params)
-        pcd.estimate_normals()
+        params = o3d.geometry.KDTreeSearchParamHybrid(radius=0.3, max_nn=50)        
+        pcd.estimate_normals(search_param=params)
+#         pcd.estimate_normals()
 #         pcd.orient_normals_to_align_with_direction()
         assert pcd.has_normals()        
 
@@ -133,7 +134,6 @@ class Sphere:
     def __projectPointCloudOnSphere(self, cloud):
         # sqrt(x^2+y^2+z^2)
         dist = np.sqrt(cloud[:,0]**2 + cloud[:,1]**2 + cloud[:,2]**2)
-        #dist = np.sqrt(np.power(sph_image_cart[:,0],2) + np.power(sph_image_cart[:,1],2) + np.power(sph_image_cart[:,2],2))
 
         projected = np.empty([len(cloud), 3])
         ranges = np.empty([len(cloud), 1])
