@@ -19,11 +19,18 @@ class DHGrid:
     @staticmethod
     def ConvertGridToEuclidean(grid):
         cart_grid = np.zeros([3, grid.shape[1], grid.shape[2]])
-        cart_grid[0,:,:] = np.multiply(np.sin(grid[0, :,:]), np.cos(grid[1,:,:]))
+        cart_grid[0,:,:] = np.multiply(np.sin(grid[0, :, :]), np.cos(grid[1, :, :]))
         cart_grid[1,:,:] = np.multiply(np.sin(grid[0, :, :]), np.sin(grid[1, :, :]))
         cart_grid[2,:,:] = np.cos(grid[0, :, :])
         return cart_grid
+    
+    def ConvertPointsToEuclidean(grid):
+        cart_grid = np.zeros([grid.shape[0], 3])
+        cart_grid[:,0] = np.multiply(np.sin(grid[:, 0]), np.cos(grid[:, 1]))
+        cart_grid[:,1] = np.multiply(np.sin(grid[:, 0]), np.sin(grid[:, 1]))
+        cart_grid[:,2] = np.cos(grid[:, 0])
+        return cart_grid
 
 if __name__ == "__main__":
-    grid = DHGrid.CreateGrid(50)
+    grid, _ = DHGrid.CreateGrid(50)
     print("DH grid: ", grid.shape)

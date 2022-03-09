@@ -126,11 +126,11 @@ class Sphere:
                     
                     if has_semantics:
                         semantics = self.semantics[cur_idx]
-                        semantics = SemanticClasses.map_sem_kitti_label(semantics) if not np.isnan(semantics) else -1
+#                         semantics = SemanticClasses.map_sem_kitti_label(semantics) if not np.isnan(semantics) else -1
                         features[feature_idx, i, j] = semantics
         
         return features
-
+    
     def __projectPointCloudOnSphere(self, cloud):
         # sqrt(x^2+y^2+z^2)
         dist = np.sqrt(cloud[:,0]**2 + cloud[:,1]**2 + cloud[:,2]**2)
@@ -139,25 +139,22 @@ class Sphere:
         ranges = np.empty([len(cloud), 1])
 
         # Some values might be zero or NaN, lets ignore them for now.
-        with np.errstate(divide='ignore', invalid='ignore'):
-            projected[:,0] = np.arccos(cloud[:,2] / dist)
-            projected[:,1] = np.mod(np.arctan2(cloud[:,1], cloud[:,0]) + 2*np.pi, 2*np.pi)
-            ranges[:,0] = dist
+        eps = 0.000001
+        projected[:,0] = np.arccos(cloud[:,2] / (dist + eps))
+        projected[:,1] = np.mod(np.arctan2(cloud[:,1], cloud[:,0]) + 2*np.pi, 2*np.pi)
+        ranges[:,0] = dist
         return projected, ranges
 
     def __convertSphericalToEuclidean(self, spherical):
         cart_sphere = np.zeros([len(spherical), 3])
-        cart_sphere[:,0] = np.multiply(np.sin(spherical[:,0]), np.cos(spherical[:,1]))
-        cart_sphere[:,1] = np.multiply(np.sin(spherical[:,0]), np.sin(spherical[:,1]))
-        cart_sphere[:,2] = np.cos(spherical[:,0])
+        
+        # CUSTOM: For some reason the projection need to be inver
+        cart_sphere[:,0] = -np.multiply(np.sin(spherical[:,0]), np.cos(spherical[:,1]))
+        cart_sphere[:,1] = -np.multiply(np.sin(spherical[:,0]), np.sin(spherical[:,1]))
+        cart_sphere[:,2] = -np.cos(spherical[:,0])
         mask = np.isnan(cart_sphere)
         cart_sphere[mask] = 0
         return cart_sphere
-
-    def __convertEuclideanToSpherical(self, euclidean):
-      sphere = np.zeros([len(euclidean), 2])
-      dist = np.sqrt(np.power(sph_image_cart[:,1],2) + np.power(sph_image_cart[:,2],2) + np.power(sph_image_cart[:,3],2))
-      sphere[:,0] = np.arccos()
 
 if __name__ == "__main__":
     ds = DataSource("/media/scratch/berlukas/spherical/training")

@@ -36,3 +36,6 @@ BB = pointCloud(xyz_b, 'Intensity', i_b);
 
 % pcshowpair(AA, BB);
 pcshow(AA)
+hold on;
+pcshow(BB);
+hold off;
