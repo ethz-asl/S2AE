@@ -148,7 +148,8 @@ class Sphere:
     def __convertSphericalToEuclidean(self, spherical):
         cart_sphere = np.zeros([len(spherical), 3])
         
-        # CUSTOM: For some reason the projection need to be inver
+        # CUSTOM: For some reason the projection need to be inverted here to nicely fit the sph images.
+        # Let's see if other datasets require the same modification
         cart_sphere[:,0] = -np.multiply(np.sin(spherical[:,0]), np.cos(spherical[:,1]))
         cart_sphere[:,1] = -np.multiply(np.sin(spherical[:,0]), np.sin(spherical[:,1]))
         cart_sphere[:,2] = -np.cos(spherical[:,0])
