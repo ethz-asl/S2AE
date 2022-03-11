@@ -23,7 +23,7 @@ class ImageSphere:
         features = np.zeros((1, grid.shape[1], grid.shape[2]))
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
-                [k, nn_idx, _] = pcd_tree.search_knn_vector_3d(cart_grid[:, i, j], kNearestNeighbors)
+                [k, nn_idx, _] = pcd_tree.search_knn_vector_3d(cart_grid[:, j, i], kNearestNeighbors)
 
                 # TODO(lbern): Average over all neighbors
                 for cur_idx in nn_idx:
@@ -33,6 +33,32 @@ class ImageSphere:
 
         return features
 
+class ColorImageSphere:
+    def __init__(self, sph_image, bw=100):
+        self.sph_image = sph_image
+        self.rgb = sph_image[:,3:6]
+
+    def sampleUsingGrid(self, grid):
+        cart_sphere = self.sph_image
+        cart_grid = DHGrid.ConvertGridToEuclidean(grid)
+
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(cart_sphere[:, 0:3])
+        pcd_tree = o3d.geometry.KDTreeFlann(pcd)
+
+        kNearestNeighbors = 1
+        features = np.zeros((3, grid.shape[1], grid.shape[2]))
+        for i in range(grid.shape[1]):
+            for j in range(grid.shape[2]):
+                [k, nn_idx, _] = pcd_tree.search_knn_vector_3d(cart_grid[:, i, j], kNearestNeighbors)
+
+                # TODO(lbern): Average over all neighbors
+                for cur_idx in nn_idx:
+                    rgb = self.rgb[cur_idx,:]
+                    rgb = rgb if not np.any(np.isnan(rgb)) else np.array([0.0,0.0,0.0])
+                    features[0:3, i, j] = rgb
+
+        return features
 
 if __name__ == "__main__":
     print("Not yet implemented")

@@ -60,7 +60,7 @@ class Utils:
         pcd.points = o3d.utility.Vector3dVector(cloud[:, 0:3])
         pcd.transform(T)
         dst = np.asarray(pcd.points)
-        return np.column_stack((dst, cloud[:, 3], cloud[:, 4], cloud[:, 5]))
+        return np.column_stack((dst, cloud[:, 3], cloud[:, 4]))
 
 if __name__ == "__main__":
     bw = 30
