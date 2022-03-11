@@ -16,13 +16,14 @@ class SubSampler:
         return int(input_data.shape[3] / 2)
 
     def compute_output_data(self):
+        if self.input_bw == self.output_bw:
+            return self.input_data
         n_clouds = self.input_data.shape[0]
-        n_clouds = 10
         out = np.zeros((n_clouds, 3, 2*self.output_bw, 2*self.output_bw))
         for i in tqdm(range(n_clouds)):
             grid, _ = DHGrid.CreateGrid(self.output_bw)
             sph = Sphere(bw = self.input_bw, features = self.input_data[i, :, :, :])
-            out[i, :, :, :] = sph.sampleUsingGrid(grid)
+            out[i, :, :, :] = sph.sampleUsingGrid(grid, False)
         return out
 
 

@@ -79,10 +79,10 @@ class Sphere:
                 cur_idx = cur_idx + 1
 
     def getProjectedInCartesian(self):
-        return self.__convertSphericalToEuclidean(self.sphere)
+        return self.__convertSphericalToEuclidean(self.sphere, True)
 
-    def sampleUsingGrid(self, grid):
-        cart_sphere = self.__convertSphericalToEuclidean(self.sphere)
+    def sampleUsingGrid(self, grid, invert=True):
+        cart_sphere = self.__convertSphericalToEuclidean(self.sphere, invert)
         cart_grid = DHGrid.ConvertGridToEuclidean(grid)
 
         pcd = o3d.geometry.PointCloud()
@@ -147,14 +147,16 @@ class Sphere:
         ranges[:,0] = dist
         return projected, ranges
 
-    def __convertSphericalToEuclidean(self, spherical):
+    def __convertSphericalToEuclidean(self, spherical, invert):
         cart_sphere = np.zeros([len(spherical), 3])
 
         # CUSTOM: For some reason the projection need to be inverted here to nicely fit the sph images.
         # Let's see if other datasets require the same modification
-        cart_sphere[:,0] = -np.multiply(np.sin(spherical[:,0]), np.cos(spherical[:,1]))
-        cart_sphere[:,1] = -np.multiply(np.sin(spherical[:,0]), np.sin(spherical[:,1]))
-        cart_sphere[:,2] = -np.cos(spherical[:,0])
+        cart_sphere[:,0] = np.multiply(np.sin(spherical[:,0]), np.cos(spherical[:,1]))
+        cart_sphere[:,1] = np.multiply(np.sin(spherical[:,0]), np.sin(spherical[:,1]))
+        cart_sphere[:,2] = np.cos(spherical[:,0])
+        if invert:
+            cart_sphere = -cart_sphere
         mask = np.isnan(cart_sphere)
         cart_sphere[mask] = 0
         return cart_sphere
