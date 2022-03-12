@@ -116,6 +116,7 @@ class MainLoss(nn.Module):
         
 #         losses = self.alpha * nll_losses + self.beta * lz_losses + self.gamma * tv_losses
         losses = self.alpha * nll_losses + self.beta * lz_losses
+#         losses = self.alpha * nll_losses 
         if size_average:
             if batch_all:
                 return losses.sum()/(((losses > 1e-16).sum()).float()+1e-16), losses.mean()
