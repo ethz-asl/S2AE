@@ -4,7 +4,8 @@ from sub_sampler import SubSampler
 
 import numpy as np
 
-export_ds = '/mnt/data/datasets/nuscenes/processed'
+#export_ds = '/mnt/data/datasets/nuscenes/processed'
+export_ds = '/media/scratch/berlukas/nuscenes'
 cloud_filename = f"{export_ds}/clouds.npy"
 sampled_filename = f"{export_ds}/sampled_clouds.npy"
 cloud_features = np.load(cloud_filename)
