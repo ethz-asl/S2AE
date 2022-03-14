@@ -25,7 +25,7 @@ from sphere import Sphere
 from visualize import Visualize
 from metrics import *
 from average_meter import AverageMeter
-    
+
 # ## Initialize some parameter
 print(f"Initializing CUDA...")
 torch.cuda.set_device(0)
@@ -66,20 +66,24 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 
 # training
 img_filename = f"{export_ds}/images.npy"
-cloud_filename = f"{export_ds}/clouds1.npy"
-sem_clouds_filename = f"{export_ds}/new_sem_classes_gt1.npy"
+# cloud_filename = f"{export_ds}/clouds1.npy"
+cloud_filename = f"{export_ds}/sampled_clouds_fixed_sem.npy"
+# sem_clouds_filename = f"{export_ds}/new_sem_classes_gt1.npy"
 
 # testing
 dec_input = f"{export_ds}/decoded_input.npy"
 dec_clouds = f"{export_ds}/decoded.npy"
 dec_gt = f"{export_ds}/decoded_gt.npy"
 
-print(f"Loading from images from {img_filename}, clouds from {cloud_filename} and sem clouds from {sem_clouds_filename}")
+print(f"Loading clouds from {cloud_filename} and sem clouds from {sem_clouds_filename}")
 #img_features = np.load(img_filename)
-img_features = np.zeros((1,1,1))
+# img_features = np.zeros((1,1,1))
 cloud_features = np.load(cloud_filename)
-sem_cloud_features = np.load(sem_clouds_filename)
-print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
+# sem_cloud_features = np.load(sem_clouds_filename)
+
+sem_cloud_features = cloud_features[:, 2, :, :]
+cloud_features = cloud_features[:, 0:2, :, :]
+print(f"Shape of clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
 
 # training 2
@@ -143,7 +147,7 @@ def train_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_, t0):
     net.train()
     for batch_idx, (cloud, lidarseg_gt) in enumerate(train_loader):
         cloud, lidarseg_gt = cloud.cuda().float(), lidarseg_gt.cuda().long()
-        
+
         enc_dec_cloud = net(cloud)
         loss, loss_total = criterion(enc_dec_cloud, lidarseg_gt)
         #loss_embedd = embedded_a.norm(2) + embedded_p.norm(2) + embedded_n.norm(2)
@@ -247,11 +251,11 @@ train_iter = 0
 val_iter = 0
 loss_ = 0.0
 print(f'Starting training using {n_epochs} epochs')
-for epoch in tqdm(range(n_epochs)):    
+for epoch in tqdm(range(n_epochs)):
     lr = adjust_learning_rate_exp(optimizer, epoch_num=epoch, lr=learning_rate)
     t0 = time.time()
 
-    train_iter = train_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)    
+    train_iter = train_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)
     val_iter = validate_lidarseg(net, criterion, optimizer, writer, epoch, val_iter)
     writer.add_scalar('Train/lr', lr, epoch)
 
