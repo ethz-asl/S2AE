@@ -34,7 +34,7 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 20
+n_epochs = 10
 batch_size = 5
 num_workers = 32
 n_classes = 9
@@ -62,13 +62,13 @@ print(f"All instances initialized.")
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
-export_ds = '/media/scratch/berlukas/nuscenes'
+# export_ds = '/media/scratch/berlukas/nuscenes'
+export_ds = '/media/scratch/berlukas/nuscenes_old'
 
 # training
-img_filename = f"{export_ds}/images.npy"
-# cloud_filename = f"{export_ds}/clouds1.npy"
-cloud_filename = f"{export_ds}/sampled_clouds_fixed_sem.npy"
-# sem_clouds_filename = f"{export_ds}/new_sem_classes_gt1.npy"
+cloud_filename = f"{export_ds}/clouds1.npy"
+# cloud_filename = f"{export_ds}/sampled_clouds_fixed_sem.npy"
+sem_clouds_filename = f"{export_ds}/new_sem_classes_gt1.npy"
 
 # testing
 dec_input = f"{export_ds}/decoded_input.npy"
@@ -76,13 +76,12 @@ dec_clouds = f"{export_ds}/decoded.npy"
 dec_gt = f"{export_ds}/decoded_gt.npy"
 
 print(f"Loading clouds from {cloud_filename}")
-#img_features = np.load(img_filename)
-# img_features = np.zeros((1,1,1))
 cloud_features = np.load(cloud_filename)
-# sem_cloud_features = np.load(sem_clouds_filename)
+sem_cloud_features = np.load(sem_clouds_filename)
 
-sem_cloud_features = cloud_features[:, 2, :, :]
-cloud_features = cloud_features[:, 0:2, :, :]
+# ONLY NEEDED WITH THE NEW FORMAT
+#sem_cloud_features = cloud_features[:, 2, :, :]
+#cloud_features = cloud_features[:, 0:2, :, :]
 print(f"Shape of clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
 
