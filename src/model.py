@@ -250,5 +250,5 @@ class Model(nn.Module):
         e1d3 = torch.cat([e1, self.unpool4(d3)], dim=1)
         d4 = self.deconv4(e1d3)
 
-        return self.sm(so3_to_s2_integrate(d4))
-        # return so3_to_s2_integrate(d4)
+        # return self.sm(so3_to_s2_integrate(d4))
+        return so3_to_s2_integrate(d4)
