@@ -104,9 +104,9 @@ class MainLoss(nn.Module):
         super().__init__()
 #         self.class_weights = autograd.Variable(torch.FloatTensor(self.class_weights).cuda())
         self.class_weights = torch.from_numpy(self.class_weights).cuda().float()
-        self.alpha = 0.4
-        self.beta = 0.6
-        self.gamma = 0.0
+        self.alpha = 1.1
+        self.beta = 1.6
+        self.gamma = 7.0
 
     def forward(self, decoded, teacher, size_average=True, batch_all=True):
 #         wce_losses = F.cross_entropy(decoded, teacher, weight=self.class_weights, size_average=size_average, ignore_index=250)
