@@ -75,7 +75,7 @@ dec_input = f"{export_ds}/decoded_input.npy"
 dec_clouds = f"{export_ds}/decoded.npy"
 dec_gt = f"{export_ds}/decoded_gt.npy"
 
-print(f"Loading clouds from {cloud_filename} and sem clouds from {sem_clouds_filename}")
+print(f"Loading clouds from {cloud_filename}")
 #img_features = np.load(img_filename)
 # img_features = np.zeros((1,1,1))
 cloud_features = np.load(cloud_filename)
