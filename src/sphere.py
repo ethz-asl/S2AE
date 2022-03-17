@@ -38,9 +38,9 @@ class Sphere:
 
     def has_semantics(self):
         return len(self.semantics) > 0
-    
+
     def sampleUsingGrid(self, grid, invert=True):
-        cart_sphere = self.__convertSphericalToEuclidean(self.sphere)
+        cart_sphere = self.__convertSphericalToEuclidean(self.sphere, invert)
         cart_grid = DHGrid.ConvertGridToEuclidean(grid)
 
         pcd = o3d.geometry.PointCloud()
@@ -73,7 +73,7 @@ class Sphere:
                     intensity = self.intensity[cur_idx]
                     intensity = intensity if not np.isnan(intensity) else -1
                     features[1, i, j] = intensity
-                    
+
                     if has_semantics:
                         semantics = self.semantics[cur_idx]
                         semantics = semantics if not np.isnan(semantics) else -1
@@ -96,11 +96,16 @@ class Sphere:
             ranges[:,0] = dist
         return projected, ranges
 
-    def __convertSphericalToEuclidean(self, spherical):
+    def __convertSphericalToEuclidean(self, spherical, invert = False):
         cart_sphere = np.zeros([len(spherical), 3])
+
+        # CUSTOM: For some reason the projection need to be inverted here to nicely fit the sph images.
+        # Let's see if other datasets require the same modification
         cart_sphere[:,0] = np.multiply(np.sin(spherical[:,0]), np.cos(spherical[:,1]))
         cart_sphere[:,1] = np.multiply(np.sin(spherical[:,0]), np.sin(spherical[:,1]))
         cart_sphere[:,2] = np.cos(spherical[:,0])
+        if invert:
+            cart_sphere = -cart_sphere
         mask = np.isnan(cart_sphere)
         cart_sphere[mask] = 0
         return cart_sphere
