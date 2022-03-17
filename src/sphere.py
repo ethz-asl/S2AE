@@ -54,7 +54,6 @@ class Sphere:
             n_features = n_features + 1
         features = np.ones((n_features, grid.shape[1], grid.shape[2])) * (-1)
 
-        dist_threshold = 0.3
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
                 [k, nn_idx, nn_dist] = pcd_tree.search_knn_vector_3d(cart_grid[:, i, j], kNearestNeighbors)
