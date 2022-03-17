@@ -12,6 +12,9 @@ class Sphere:
             self.point_cloud = point_cloud
             (self.sphere, self.ranges) = self.__projectPointCloudOnSphere(point_cloud)
             self.intensity = point_cloud[:,3]
+            self.semantics = []
+            if point_cloud.shape[1] >= 5:
+                self.semantics = point_cloud[:,4]
         elif bw is not None and features is not None:
             self.constructFromFeatures(bw, features)
 
@@ -33,7 +36,10 @@ class Sphere:
     def getProjectedInCartesian(self):
         return self.__convertSphericalToEuclidean(self.sphere)
 
-    def sampleUsingGrid(self, grid):
+    def has_semantics(self):
+        return len(self.semantics) > 0
+    
+    def sampleUsingGrid(self, grid, invert=True):
         cart_sphere = self.__convertSphericalToEuclidean(self.sphere)
         cart_grid = DHGrid.ConvertGridToEuclidean(grid)
 
@@ -42,8 +48,12 @@ class Sphere:
         pcd_tree = o3d.geometry.KDTreeFlann(pcd)
 
         kNearestNeighbors = 1
-#         features = np.zeros((2, grid.shape[1], grid.shape[2]))
-        features = np.ones((2, grid.shape[1], grid.shape[2])) * (-1)
+        has_semantics = self.has_semantics()
+        n_features = 2
+        if has_semantics:
+            n_features = n_features + 1
+        features = np.ones((n_features, grid.shape[1], grid.shape[2])) * (-1)
+
         dist_threshold = 0.3
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
@@ -57,37 +67,19 @@ class Sphere:
                         continue
 
                     range_value = self.ranges[cur_idx]
-                    intensity = self.intensity[cur_idx]
-
                     range_value = range_value if not np.isnan(range_value) else -1
-                    intensity = intensity if not np.isnan(intensity) else -1
-
                     features[0, i, j] = range_value
+
+                    intensity = self.intensity[cur_idx]
+                    intensity = intensity if not np.isnan(intensity) else -1
                     features[1, i, j] = intensity
+                    
+                    if has_semantics:
+                        semantics = self.semantics[cur_idx]
+                        semantics = semantics if not np.isnan(semantics) else -1
+                        features[2, i, j] = semantics
 
         return features
-
-    def sampleUsingGrid2(self, grid):
-        cart_sphere = self.__convertSphericalToEuclidean(self.sphere)
-        cart_grid = DHGrid.ConvertGridToEuclidean(grid)
-
-        sys.setrecursionlimit(50000)
-        sphere_tree = spatial.cKDTree(cart_sphere[:,0:3])
-        p_norm = 2
-        n_nearest_neighbors = 1
-        features = np.zeros((2, grid.shape[1], grid.shape[2]))
-        for i in range(grid.shape[1]):
-            for j in range(grid.shape[2]):
-                nn_dists, nn_indices = sphere_tree.query(cart_grid[:, i, j], p = p_norm, k = n_nearest_neighbors)
-                nn_indices = [nn_indices] if n_nearest_neighbors == 1 else nn_indices
-
-                # TODO(lbern): Average over all neighbors
-                for cur_idx in nn_indices:
-                    features[0, i, j] = self.ranges[cur_idx]
-                    features[1, i, j] = self.intensity[cur_idx]
-
-        return features
-
 
     def __projectPointCloudOnSphere(self, cloud):
         # sqrt(x^2+y^2+z^2)
