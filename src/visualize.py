@@ -21,7 +21,7 @@ class Visualize:
         else:
             o3d.visualization.draw_geometries([pcd])
 
-    def visualizeRawPointCloud(self, pcl, jupyter = False):
+    def visualizeRawPointcloud(self, pcl, jupyter = False):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(pcl[:, 0:3])
         colors = self.__mapIntensityToRGB(pcl[:,3])
