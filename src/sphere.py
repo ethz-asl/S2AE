@@ -99,7 +99,6 @@ class Sphere:
             n_features = n_features - 1
         features = np.ones((n_features, grid.shape[1], grid.shape[2])) * (-1)
 
-        dist_threshold = 0.3
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
                 [k, nn_idx, nn_dist] = pcd_tree.search_knn_vector_3d(cart_grid[:, i, j], kNearestNeighbors)
@@ -119,17 +118,39 @@ class Sphere:
                     intensity = intensity if not np.isnan(intensity) else -1
                     features[1, i, j] = intensity
 
-                    feature_idx = 2
-                    if has_normals:
-                        normal_angle = self.normals[cur_idx]
-                        normal_angle = normal_angle if not np.isnan(normal_angle) else -1
-                        features[feature_idx, i, j] = normal_angle
-                        feature_idx = feature_idx + 1
+#                     feature_idx = 2
+#                     if has_normals:
+#                         normal_angle = self.normals[cur_idx]
+#                         normal_angle = normal_angle if not np.isnan(normal_angle) else 0
+#                         features[feature_idx, i, j] = normal_angle
+#                         feature_idx = feature_idx + 1
 
-                    if has_semantics:
-                        semantics = self.semantics[cur_idx]
+#                     if has_semantics:
+                    semantics = self.semantics[cur_idx]
+                    semantics = semantics if not np.isnan(semantics) else -1
 #                         semantics = SemanticClasses.map_sem_kitti_label(semantics) if not np.isnan(semantics) else -1
-                        features[feature_idx, i, j] = semantics
+                    features[2, i, j] = semantics
+
+        return features
+
+    def sampleUsingGrid2(self, grid):
+        cart_sphere = self.__convertSphericalToEuclidean(self.sphere, False)
+        cart_grid = DHGrid.ConvertGridToEuclidean(grid)
+
+        sys.setrecursionlimit(50000)
+        sphere_tree = spatial.cKDTree(cart_sphere[:,0:3])
+        p_norm = 2
+        n_nearest_neighbors = 1
+        features = np.zeros((2, grid.shape[1], grid.shape[2]))
+        for i in range(grid.shape[1]):
+            for j in range(grid.shape[2]):
+                nn_dists, nn_indices = sphere_tree.query(cart_grid[:, i, j], p = p_norm, k = n_nearest_neighbors)
+                nn_indices = [nn_indices] if n_nearest_neighbors == 1 else nn_indices
+
+                # TODO(lbern): Average over all neighbors
+                for cur_idx in nn_indices:
+                    features[0, i, j] = self.ranges[cur_idx]
+                    features[1, i, j] = self.intensity[cur_idx]
 
         return features
 
