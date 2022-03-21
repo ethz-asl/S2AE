@@ -51,7 +51,7 @@ class DataSplitter:
 
     def split_for_test(self):
         self.test_sampler = SequentialSampler(self.dataset)
-        self.test_indices = self.dataset.test_indices
+        self.test_indices = range(0, len(self.dataset))
 
     def get_train_split_point(self):
         return len(self.train_sampler) + len(self.val_indices)
