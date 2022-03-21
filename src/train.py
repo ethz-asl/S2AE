@@ -58,7 +58,6 @@ model_save = 'test_training_params.pkl'
 
 print(f"All instances initialized.")
 
-
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
@@ -66,9 +65,9 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 # export_ds = '/media/scratch/berlukas/nuscenes_old'
 
 # training
-cloud_filename = f"{export_ds}/clouds_fixed_sem.npy"
+cloud_filename = f"{export_ds}/sem_clouds.npy"
 # cloud_filename = f"{export_ds}/sampled_clouds_fixed_sem.npy"
-sem_clouds_filename = f"{export_ds}_old/new_sem_classes_gt1.npy"
+# sem_clouds_filename = f"{export_ds}/sem_clouds_new.npy"
 
 # testing
 dec_input = f"{export_ds}/decoded_input.npy"
@@ -77,10 +76,10 @@ dec_gt = f"{export_ds}/decoded_gt.npy"
 
 print(f"Loading clouds from {cloud_filename}")
 cloud_features = np.load(cloud_filename)
-sem_cloud_features = np.load(sem_clouds_filename)
+# sem_cloud_features = np.load(sem_clouds_filename)
 
 # ONLY NEEDED WITH THE NEW FORMAT
-# sem_cloud_features = cloud_features[:, 2, :, :]
+sem_cloud_features = cloud_features[:, 2, :, :]
 cloud_features = cloud_features[:, 0:2, :, :]
 print(f"Shape of clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
