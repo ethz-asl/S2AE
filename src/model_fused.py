@@ -151,7 +151,7 @@ class FusedDecoder(nn.Module):
                 b_out = self.bandwidths[0],
                 b_inverse = self.bandwidths[0],
                 grid=grid_so3_2),
-            nn.BatchNorm3d(self.features[4], affine=True),
+            nn.BatchNorm3d(self.features[1], affine=True),
         )
         
         self.unpool1 = SO3Unpooling(self.bandwidths[0], self.bandwidths[1]) # 10 to 15 bw
@@ -179,7 +179,6 @@ class FusedDecoder(nn.Module):
         
         self.lsm = nn.LogSoftmax(dim=1)
         self.sm = nn.Softmax(dim=1)
-        
 
     def forward(self, x):
         d1 = self.deconv1(x)
@@ -192,9 +191,9 @@ class FusedDecoder(nn.Module):
 class FusedModel(nn.Module):
     def __init__(self, bandwidth=200, n_classes=32):
         super().__init__()
-        self.lidar_encoder = LidarEncoder(bandwidth, n_classes).cuda()
-        self.image_encoder = ImageEncoder(bandwidth, n_classes).cuda()
-        self.fused_decoder = FusedDecoder(bandwidth, n_classes).cuda()
+        self.lidar_encoder = LidarEncoder(100, n_classes).cuda()
+        self.image_encoder = ImageEncoder(200, n_classes).cuda()
+        self.fused_decoder = FusedDecoder(10, n_classes).cuda()
         
     def fuse_by_sum(self, e_lidar, e_img):
         return e_lidar + e_img
