@@ -32,10 +32,10 @@ def so3_to_s2_integrate(x):
     return torch.sum(x, dim=-1) * (2*np.pi/x.size(-1))
 
 class ImageEncoder(nn.Module):
-    def __init__(self, bandwidth=200, n_classes=32):
+    def __init__(self, bandwidth, n_classes):
         super().__init__()
 
-        self.features = [3, 64, 128]
+        self.features = [3, 32, 64]
         self.bandwidths = [bandwidth, 40, 10]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
@@ -76,12 +76,25 @@ class ImageEncoder(nn.Module):
             nn.BatchNorm3d(self.features[2], affine=True),
             nn.PReLU(),
         )
+        
+    def forward(self, x):
+        # Encoder
+#         print(f'fooooooooooo1 {x.size(0)} {x.size(1)} {x.size(2)}')
+        e1 = self.conv1(x)
+#         print(f'fooooooooooo2')
+        mp = self.max_pool1(e1)
+#         print(f'fooooooooooo3')
+        e2 = self.conv2(mp)
+#         print(f'fooooooooooo4')
+        
+#         return so3_to_s2_integrate(e2)
+        return e2
 
 class LidarEncoder(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        self.features = [n_classes, 64, 128]
+        self.features = [n_classes, 32, 64]
         self.bandwidths = [bandwidth, 40, 10]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
@@ -135,8 +148,8 @@ class FusedDecoder(nn.Module):
     def __init__(self, bandwidth=10, n_classes=32):
         super().__init__()
 
-        self.features = [128, 64, n_classes]
-        self.bandwidths = [bandwidth, 40, 200]
+        self.features = [64, 32, n_classes]
+        self.bandwidths = [10, 40, 100]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
@@ -192,8 +205,8 @@ class FusedModel(nn.Module):
     def __init__(self, bandwidth=200, n_classes=32):
         super().__init__()
         self.lidar_encoder = LidarEncoder(100, n_classes).cuda()
-        self.image_encoder = ImageEncoder(200, n_classes).cuda()
-        self.fused_decoder = FusedDecoder(10, n_classes).cuda()
+        self.image_encoder = ImageEncoder(150, n_classes).cuda()
+        self.fused_decoder = FusedDecoder(10, 16).cuda()
         
     def fuse_by_sum(self, e_lidar, e_img):
         return e_lidar + e_img

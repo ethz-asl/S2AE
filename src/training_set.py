@@ -31,8 +31,8 @@ class TrainingSetFusedSeg(torch.utils.data.Dataset):
         self.sem_cloud_features_high = sem_cloud_features
         
         self.n_features = len(self.decoded_features_low)
-        assert n_features == len(self.image_cloud_features_high)
-        assert n_features == len(self.sem_cloud_features_high)
+        assert self.n_features == len(self.image_cloud_features_high)
+        assert self.n_features == len(self.sem_cloud_features_high)
 
     def __getitem__(self, index):
         return self.decoded_features_low[index], self.image_cloud_features_high[index], self.sem_cloud_features_high[index]

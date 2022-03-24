@@ -100,7 +100,8 @@ def tv_loss(decoded, teacher):
     
 class MainLoss(nn.Module):
     def __init__(self):
-        self.class_weights = np.array([0.03203128, 0.12453853, 0.12360233, 0.12430233, 0.1118631,  0.11928928, 0.12498565, 0.12078846, 0.11859904])
+#         self.class_weights = np.array([0.03203128, 0.12453853, 0.12360233, 0.12430233, 0.1118631,  0.11928928, 0.12498565, 0.12078846, 0.11859904])
+        self.class_weights = np.array([0.0625, 0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625])
         super().__init__()
 #         self.class_weights = autograd.Variable(torch.FloatTensor(self.class_weights).cuda())
         self.class_weights = torch.from_numpy(self.class_weights).cuda().float()
