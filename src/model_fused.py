@@ -35,8 +35,8 @@ class ImageEncoder(nn.Module):
     def __init__(self, bandwidth, n_classes):
         super().__init__()
 
-        self.features = [3, 16, 32]
-        self.bandwidths = [bandwidth, 20, 10]
+        self.features = [3, 32, 64]
+        self.bandwidths = [bandwidth, 25, 10]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
@@ -94,8 +94,8 @@ class LidarEncoder(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        self.features = [n_classes, 16, 32]
-        self.bandwidths = [bandwidth, 20, 10]
+        self.features = [n_classes, 32, 64]
+        self.bandwidths = [bandwidth, 25, 10]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
@@ -148,8 +148,8 @@ class FusedDecoder(nn.Module):
     def __init__(self, bandwidth=10, n_classes=32):
         super().__init__()
 
-        self.features = [32, 16, 9]
-        self.bandwidths = [10, 20, 125]
+        self.features = [64, 32, 9]
+        self.bandwidths = [10, 25, 125]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
