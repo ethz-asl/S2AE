@@ -7,7 +7,6 @@ import math
 import sys
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
 from scipy import spatial
@@ -28,11 +27,6 @@ from visualize import Visualize
 from metrics import *
 from average_meter import AverageMeter
     
-get_ipython().run_line_magic('matplotlib', 'inline')
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-
-
 # ## Initialize some parameter
 
 print(f"Initializing CUDA...")
@@ -42,7 +36,7 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 1
+n_epochs = 10
 batch_size = 5
 num_workers = 32
 n_classes = 9
@@ -80,17 +74,11 @@ print(f"Loading from images from {img_filename}, clouds from {cloud_filename} an
 img_features = np.load(img_filename)
 print('Loaded images.')
 cloud_features = np.load(cloud_filename)
+cloud_features = cloud_features[:, 2, :, :]
 print('Loaded clouds.')
 sem_cloud_features = np.load(sem_clouds_filename)
 print('Loaded decoded.')
-print(f"Shape of clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
-
-
-n_process = 400
-img_features = img_features[0:n_process, :, :, :]
-cloud_features = cloud_features[0:n_process, :, :]
-sem_cloud_features = sem_cloud_features[0:n_process, :, :]
 print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
 
@@ -143,10 +131,10 @@ def train_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_
         writer.add_scalar('Train/Loss', loss, n_iter)
         n_iter += 1
 
-        if batch_idx % 10 == 9:
+        if batch_idx % 100 == 99:
             t1 = time.time()
             print('[Epoch %d, Batch %4d] loss: %.8f time: %.5f lr: %.3e' %
-                  (epoch + 1, batch_idx + 1, loss_ / 10, (t1 - t0) / 60, lr))
+                  (epoch + 1, batch_idx + 1, loss_ / 100, (t1 - t0) / 60, lr))
             t0 = t1
             loss_ = 0.0
     return n_iter
