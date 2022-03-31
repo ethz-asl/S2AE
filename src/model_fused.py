@@ -78,14 +78,9 @@ class ImageEncoder(nn.Module):
         )
         
     def forward(self, x):
-        # Encoder
-#         print(f'fooooooooooo1 {x.size(0)} {x.size(1)} {x.size(2)}')
         e1 = self.conv1(x)
-#         print(f'fooooooooooo2')
         mp = self.max_pool1(e1)
-#         print(f'fooooooooooo3')
         e2 = self.conv2(mp)
-#         print(f'fooooooooooo4')
         
 #         return so3_to_s2_integrate(e2)
         return e2
@@ -148,7 +143,7 @@ class FusedDecoder(nn.Module):
     def __init__(self, bandwidth=10, n_classes=32):
         super().__init__()
 
-        self.features = [64, 32, 9]
+        self.features = [128, 16, 9]
         self.bandwidths = [10, 25, 125]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
@@ -211,9 +206,21 @@ class FusedModel(nn.Module):
         
     def fuse_by_sum(self, e_lidar, e_img):
         return e_lidar + e_img
+    
+    def fuse_by_avg(self, e_lidar, e_img):
+        return (e_lidar + e_img) / 2
+    
+    def fuse_by_concat(self, e_lidar, e_img):
+        return torch.cat([e_lidar, e_img], dim=1)
+        
+    
+    def fuse(self, e_lidar, e_img):
+#         return self.fuse_by_sum(e_lidar, e_img)
+#         return self.fuse_by_avg(e_lidar, e_img)
+        return self.fuse_by_concat(e_lidar, e_img)
 
     def forward(self, x_lidar, x_img):
         e_lidar = self.lidar_encoder(x_lidar)
         e_img = self.image_encoder(x_img)
-        fused = self.fuse_by_sum(e_lidar, e_img)
+        fused = self.fuse(e_lidar, e_img)
         return self.fused_decoder(fused)
