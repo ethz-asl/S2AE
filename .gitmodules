@@ -1,3 +1,9 @@
 [submodule "deps/s2cnn"]
 	path = deps/s2cnn
 	url = git@github.com:jonas-koehler/s2cnn.git
+[submodule "deps/lie_learn"]
+	path = deps/lie_learn
+	url = https://github.com/AMLab-Amsterdam/lie_learn.git
+[submodule "deps/pynvrtc"]
+	path = deps/pynvrtc
+	url = https://github.com/NVIDIA/pynvrtc.git
