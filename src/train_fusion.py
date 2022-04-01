@@ -20,13 +20,13 @@ from data_splitter import DataSplitter
 from training_set import TrainingSetFusedSeg
 from loss import *
 
-from model_fused import FusedModel
+from model_fused_multi_gpu import FusedModel
 
 from sphere import Sphere
 from visualize import Visualize
 from metrics import *
 from average_meter import AverageMeter
-    
+
 # ## Initialize some parameter
 
 print(f"Initializing CUDA...")
@@ -118,7 +118,7 @@ def train_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_
     net.train()
     for batch_idx, (decoded, image, lidarseg_gt) in enumerate(train_loader):
         decoded, image, lidarseg_gt = decoded.cuda().float(), image.cuda().float(), lidarseg_gt.cuda().long()
-        
+
         enc_fused_dec = net(decoded, image)
         loss, loss_total = criterion(enc_fused_dec, lidarseg_gt)
         #loss_embedd = embedded_a.norm(2) + embedded_p.norm(2) + embedded_n.norm(2)
@@ -146,15 +146,15 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     avg_jacc = AverageMeter()
     avg_dice = AverageMeter()
     net.eval()
-    with torch.no_grad():            
+    with torch.no_grad():
         for batch_idx, (decoded, image, lidarseg_gt) in enumerate(val_loader):
-            decoded, image, lidarseg_gt = decoded.cuda().float(), image.cuda().float(), lidarseg_gt.cuda().long()                
+            decoded, image, lidarseg_gt = decoded.cuda().float(), image.cuda().float(), lidarseg_gt.cuda().long()
             enc_fused_dec = net(decoded, image)
-                        
+
             optimizer.zero_grad()
-            loss, loss_total = criterion(enc_fused_dec, lidarseg_gt)                                                                                        
-            writer.add_scalar('Validation/Loss', loss, n_iter)                        
-            
+            loss, loss_total = criterion(enc_fused_dec, lidarseg_gt)
+            writer.add_scalar('Validation/Loss', loss, n_iter)
+
             pred_segmentation = torch.argmax(enc_fused_dec, dim=1)
             pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
             avg_pixel_acc.update(pixel_acc)
@@ -163,12 +163,12 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             avg_dice.update(dice)
 
             n_iter += 1
-            
+
         epoch_p_1 = epoch+1
-        writer.add_scalar('Validation/AvgPixelAccuracy', avg_pixel_acc.avg, epoch_p_1)   
-        writer.add_scalar('Validation/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, epoch_p_1)   
+        writer.add_scalar('Validation/AvgPixelAccuracy', avg_pixel_acc.avg, epoch_p_1)
+        writer.add_scalar('Validation/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, epoch_p_1)
         writer.add_scalar('Validation/AvgJaccardIndex', avg_jacc.avg, epoch_p_1)
-        writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)  
+        writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)
     return n_iter
 
 def test_fused_lidarseg(net, criterion, writer):
@@ -185,34 +185,34 @@ def test_fused_lidarseg(net, criterion, writer):
     net.eval()
     with torch.no_grad():
         for batch_idx, (decoded, image, lidarseg_gt) in enumerate(test_loader):
-            decoded, image, lidarseg_gt = decoded.cuda().float(), image.cuda().float(), lidarseg_gt.cuda().long()                
-            enc_fused_dec = net(decoded, image)        
-            
+            decoded, image, lidarseg_gt = decoded.cuda().float(), image.cuda().float(), lidarseg_gt.cuda().long()
+            enc_fused_dec = net(decoded, image)
+
             pred_segmentation = torch.argmax(enc_fused_dec, dim=1)
             pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
             avg_pixel_acc.update(pixel_acc)
             avg_pixel_acc_per_class.update(pixel_acc_per_class)
             avg_jacc.update(jacc)
             avg_dice.update(dice)
-            
-            writer.add_scalar('Test/PixelAccuracy', pixel_acc, n_iter)   
-            writer.add_scalar('Test/PixelAccuracyPerClass', pixel_acc_per_class, n_iter)   
+
+            writer.add_scalar('Test/PixelAccuracy', pixel_acc, n_iter)
+            writer.add_scalar('Test/PixelAccuracyPerClass', pixel_acc_per_class, n_iter)
             writer.add_scalar('Test/JaccardIndex', jacc, n_iter)
-            writer.add_scalar('Test/DiceCoefficient', dice, n_iter)  
-            
+            writer.add_scalar('Test/DiceCoefficient', dice, n_iter)
+
             n_batch = enc_fused_dec.shape[0]
-            for i in range(0, n_batch):                                
+            for i in range(0, n_batch):
                 all_input_clouds[k] = decoded.cpu().data.numpy()[i,:,:,:]
                 all_input_images[k] = image.cpu().data.numpy()[i,:,:,:]
                 all_decoded_clouds[k] = enc_fused_dec.cpu().data.numpy()[i,:,:,:]
                 all_gt_clouds[k] = lidarseg_gt.cpu().data.numpy()[i,:,:]
-                k = k + 1     
+                k = k + 1
             n_iter += 1
-            
-        writer.add_scalar('Test/AvgPixelAccuracy', avg_pixel_acc.avg, n_iter)   
-        writer.add_scalar('Test/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, n_iter)   
+
+        writer.add_scalar('Test/AvgPixelAccuracy', avg_pixel_acc.avg, n_iter)
+        writer.add_scalar('Test/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, n_iter)
         writer.add_scalar('Test/AvgJaccardIndex', avg_jacc.avg, n_iter)
-        writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)  
+        writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)
 
     return all_input_clouds, all_input_images, all_decoded_clouds, all_gt_clouds
 
@@ -225,14 +225,14 @@ train_iter = 0
 val_iter = 0
 loss_ = 0.0
 print(f'Starting training using {n_epochs} epochs')
-for epoch in tqdm(range(n_epochs)):    
+for epoch in tqdm(range(n_epochs)):
     lr = adjust_learning_rate_exp(optimizer, epoch_num=epoch, lr=learning_rate)
     t0 = time.time()
 
-    train_iter = train_fused_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)    
+    train_iter = train_fused_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)
     val_iter = validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, val_iter)
     writer.add_scalar('Train/lr', lr, epoch)
-        
+
 print("Training finished!")
 torch.save(net.state_dict(), model_save)
 
@@ -256,4 +256,3 @@ print(f'Wrote upsampled gt clouds to {dec_gt}')
 
 writer.close()
 print("Testing finished!")
-
