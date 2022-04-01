@@ -58,11 +58,12 @@ print(f"All instances initialized.")
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
 export_ds = '/media/scratch/berlukas/nuscenes'
+export_ds = '/cluster/work/riner/users/berlukas'
 
 # training
-img_filename = f"{export_ds}/color_images_150.npy"
-cloud_filename = f"{export_ds}/sem_clouds_125.npy"
-sem_clouds_filename = f"{export_ds}/sem_clouds_decoded.npy"
+img_filename = f"{export_ds}/color_images_150_400.npy"
+cloud_filename = f"{export_ds}/sem_clouds_100_400.npy"
+sem_clouds_filename = f"{export_ds}/sem_clouds_decoded_400.npy"
 
 # testing
 dec_input_clouds = f"{export_ds}/decoded_fused_input_clouds.npy"
@@ -74,7 +75,7 @@ print(f"Loading from images from {img_filename}, clouds from {cloud_filename} an
 img_features = np.load(img_filename)
 print('Loaded images.')
 cloud_features = np.load(cloud_filename)
-cloud_features = cloud_features[:, 2, :, :]
+# cloud_features = cloud_features[:, 2, :, :]
 print('Loaded clouds.')
 sem_cloud_features = np.load(sem_clouds_filename)
 print('Loaded decoded.')
