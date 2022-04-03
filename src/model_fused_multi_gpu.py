@@ -1,4 +1,5 @@
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
@@ -234,7 +235,10 @@ class FusedModel(nn.Module):
         # return self.fuse_by_concat(e_lidar, e_img)
 
     def forward(self, x_lidar, x_img):
-        e_lidar = self.lidar_encoder(x_lidar.cuda(0))
-        e_img = self.image_encoder(x_img.cuda(1))
-        fused = self.fuse(e_lidar.cuda(2), e_img.cuda(2))
-        return self.fused_decoder(fused)
+        torch.cuda.set_device(0)
+        e1_lidar, e2_lidar = self.lidar_encoder(x_lidar.cuda(0))
+        torch.cuda.set_device(1)
+        e1_img, e2_img = self.image_encoder(x_img.cuda(1))
+        torch.cuda.set_device(2)
+        fused = self.fuse(e2_lidar.cuda(2), e2_img.cuda(2))
+        return self.fused_decoder(fused.to(2))
