@@ -201,7 +201,8 @@ class FusedDecoder(nn.Module):
 
     def forward(self, x):
         d1 = self.deconv1(x)
-        d2 = self.deconv2(self.unpool1(d1))
+        ud1 = self.unpool1(d1)
+        d2 = self.deconv2(ud1)
 
         # Skip connection
         # ud1 = self.unpool1(d1)
