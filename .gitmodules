@@ -7,3 +7,6 @@
 [submodule "deps/pynvrtc"]
 	path = deps/pynvrtc
 	url = https://github.com/NVIDIA/pynvrtc.git
+[submodule "deps/cupy"]
+	path = deps/cupy
+	url = https://github.com/cupy/cupy

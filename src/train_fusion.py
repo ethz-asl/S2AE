@@ -4,28 +4,21 @@
 # # Training code for Fusion Network of S2AE
 
 import math
-import sys
 import time
 
 import numpy as np
-import open3d as o3d
-from scipy import spatial
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from torchsummary import summary
 from tqdm.auto import tqdm
 
 from data_splitter import DataSplitter
 from training_set import TrainingSetFusedSeg
-from loss import *
-
 from model_fused_multi_gpu import FusedModel
-
-from sphere import Sphere
-from visualize import Visualize
-from metrics import *
 from average_meter import AverageMeter
+
+from metrics import *
+from loss import *
 
 # ## Initialize some parameter
 

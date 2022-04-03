@@ -1,16 +1,5 @@
-import os
-from functools import partial
-
 import numpy as np
-
-import open3d as o3d
-import pymp
 import torch.utils.data
-from data_source import DataSource
-from dh_grid import DHGrid
-from sphere import Sphere
-from tqdm.auto import tqdm, trange
-from tqdm.contrib.concurrent import process_map, thread_map
 
 class TrainingSetLidarSeg(torch.utils.data.Dataset):
     def __init__(self, cloud_features, sem_cloud_features):
