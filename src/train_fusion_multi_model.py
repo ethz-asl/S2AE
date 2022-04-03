@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 
 from data_splitter import DataSplitter
 from training_set import TrainingSetFusedSeg
-from model_fused_multi_gpu import FusedModel
+from model_fused_multi_gpu import, ImageEncoder, LidarEncoder FusedModel
 from average_meter import AverageMeter
 
 from metrics import *

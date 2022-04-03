@@ -148,7 +148,7 @@ class FusedDecoder(nn.Module):
     def __init__(self, bandwidth=10, n_classes=32):
         super().__init__()
 
-        self.features = [300, 100, 9]
+        self.features = [150, 100, 9]
         self.bandwidths = [10, 20, 100]
 
 #         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
@@ -171,7 +171,7 @@ class FusedDecoder(nn.Module):
 
         self.unpool1 = SO3Unpooling(self.bandwidths[0], self.bandwidths[1]) # 10 to 15 bw
 
-        self.skip_size = 80 + 80
+        self.skip_size = 0
 
         self.deconv2 = nn.Sequential(
             SO3Convolution(
@@ -198,14 +198,14 @@ class FusedDecoder(nn.Module):
         self.lsm = nn.LogSoftmax(dim=1)
         self.sm = nn.Softmax(dim=1)
 
-    def forward(self, x, e_img_lidar):
+    def forward(self, x):
         d1 = self.deconv1(x)
-#         d2 = self.deconv2(self.unpool1(d1))
+        d2 = self.deconv2(self.unpool1(d1))
 
         # Skip connection
-        ud1 = self.unpool1(d1)
-        e_ud1 = torch.cat([e_img_lidar, ud1], dim=1)
-        d2 = self.deconv2(e_ud1)
+        # ud1 = self.unpool1(d1)
+        # e_ud1 = torch.cat([e_img_lidar, ud1], dim=1)
+        # d2 = self.deconv2(e_ud1)
 
         # return self.sm(so3_to_s2_integrate(d4))
         return so3_to_s2_integrate(d2)
@@ -229,9 +229,9 @@ class FusedModel(nn.Module):
 
 
     def fuse(self, e_lidar, e_img):
-#         return self.fuse_by_sum(e_lidar, e_img)
+        return self.fuse_by_sum(e_lidar, e_img)
 #         return self.fuse_by_avg(e_lidar, e_img)
-        return self.fuse_by_concat(e_lidar, e_img)
+        # return self.fuse_by_concat(e_lidar, e_img)
 
     def forward(self, x_lidar, x_img):
         e_lidar = self.lidar_encoder(x_lidar.cuda(0))
