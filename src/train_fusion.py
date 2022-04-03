@@ -4,16 +4,12 @@
 # # Training code for Fusion Network of S2AE
 
 import math
-import sys
 import time
 
 import numpy as np
-import open3d as o3d
-from scipy import spatial
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from torchsummary import summary
 from tqdm.auto import tqdm
 
 from data_splitter import DataSplitter
@@ -22,8 +18,6 @@ from loss import *
 
 from model_fused import FusedModel
 
-from sphere import Sphere
-from visualize import Visualize
 from metrics import *
 from average_meter import AverageMeter
     
@@ -61,7 +55,7 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 
 # training
 img_filename = f"{export_ds}/color_images_150.npy"
-cloud_filename = f"{export_ds}/sem_clouds_125.npy"
+cloud_filename = f"{export_ds}/sem_clouds.npy"
 sem_clouds_filename = f"{export_ds}/sem_clouds_decoded.npy"
 
 # testing
