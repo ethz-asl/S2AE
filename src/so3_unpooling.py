@@ -36,7 +36,7 @@ class SO3_spectral_unpool_symmetric(torch.autograd.Function):
 
         ctx.lb = int(center - lhs)
         ctx.ub = int(center + rhs)
-        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)))
+        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)), device=x.device)
         Y[ctx.lb:ctx.ub, :, :, :] = X[:,:,:,:]
 
         # Shift the signals back and perform a inverse transform.
@@ -76,7 +76,7 @@ class SO3_spectral_unpool_left(torch.autograd.Function):
 
         ctx.lb = lhs
         ctx.ub = rhs
-        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)))
+        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)), device=x.device)
         Y[ctx.lb:ctx.ub, :, :, :] = X[:,:,:,:]
 
         # Shift the signals back and perform a inverse transform.
