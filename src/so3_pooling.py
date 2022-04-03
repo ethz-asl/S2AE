@@ -45,7 +45,7 @@ class SO3_spectral_pool_symmetric(torch.autograd.Function):
 
         # Zero-pad the signal to the bigger size.
         samples = Utils.compute_samples_SO3(ctx.b_in)
-        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)), device=torch.device('cuda:0'))
+        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)))
         center = samples // 2
         lhs,rhs = Utils.compute_bounds_SO3(ctx.b_out)
         ctx.lb = int(center - lhs)
@@ -55,7 +55,7 @@ class SO3_spectral_pool_symmetric(torch.autograd.Function):
         # Shift the signals back and perform a inverse transform.
         X, _ = Utils.ifftshift(Y)
         return SO3_ifft_real.apply(X), None  # [batch, feature_out, beta, alpha, gamma]
-    
+
 class SO3_spectral_pool_left(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, b_out=None):  # pylint: disable=W
@@ -85,7 +85,7 @@ class SO3_spectral_pool_left(torch.autograd.Function):
 
         # Zero-pad the signal to the bigger size.
         samples = Utils.compute_samples_SO3(ctx.b_in)
-        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)), device=torch.device('cuda:0'))
+        Y = torch.zeros((samples, X.size(1), X.size(2), X.size(3)))
         Y[ctx.lb:ctx.ub, :, :, :] = X[:,:,:,:]
 
         # Perform an inverse transform.
