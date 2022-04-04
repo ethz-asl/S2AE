@@ -58,7 +58,8 @@ class FusedModel(nn.Module):
                 b_in  = self.image_bandwidths[0],
                 b_out = self.image_bandwidths[1],
                 b_inverse = self.image_bandwidths[1],
-                grid=image_grid_s2),
+                grid=image_grid_s2,
+                device = self.dev0),
             nn.BatchNorm3d(self.image_features[1], affine=True),
             nn.PReLU(),
             SO3Convolution(
@@ -67,7 +68,8 @@ class FusedModel(nn.Module):
                 b_in  = self.image_bandwidths[1],
                 b_out = self.image_bandwidths[1],
                 b_inverse = self.image_bandwidths[1],
-                grid=image_grid_so3_1),
+                grid=image_grid_so3_1,
+                device = self.dev0),
             nn.BatchNorm3d(self.image_features[1], affine=True),
             nn.PReLU()
         ).to(self.dev0)
@@ -81,7 +83,8 @@ class FusedModel(nn.Module):
                 b_in  = self.image_bandwidths[2],
                 b_out = self.image_bandwidths[2],
                 b_inverse = self.image_bandwidths[2],
-                grid=image_grid_so3_2),
+                grid=image_grid_so3_2,
+                device = self.dev0),
             nn.BatchNorm3d(self.image_features[2], affine=True),
             nn.PReLU(),
         ).to(self.dev0)
@@ -102,7 +105,8 @@ class FusedModel(nn.Module):
                 b_in  = self.lidar_bandwidths[0],
                 b_out = self.lidar_bandwidths[1],
                 b_inverse = self.lidar_bandwidths[1],
-                grid=lidar_grid_s2),
+                grid=lidar_grid_s2,
+                device = self.dev1),
             nn.BatchNorm3d(self.lidar_features[1], affine=True),
             nn.PReLU(),
             SO3Convolution(
@@ -111,7 +115,8 @@ class FusedModel(nn.Module):
                 b_in  = self.lidar_bandwidths[1],
                 b_out = self.lidar_bandwidths[1],
                 b_inverse = self.lidar_bandwidths[1],
-                grid=lidar_grid_so3_1),
+                grid=lidar_grid_so3_1,
+                device = self.dev1),
             nn.BatchNorm3d(self.lidar_features[1], affine=True),
             nn.PReLU()
         ).to(self.dev1)
@@ -125,7 +130,8 @@ class FusedModel(nn.Module):
                 b_in  = self.lidar_bandwidths[2],
                 b_out = self.lidar_bandwidths[2],
                 b_inverse = self.lidar_bandwidths[2],
-                grid=lidar_grid_so3_2),
+                grid=lidar_grid_so3_2,
+                device = self.dev1),
             nn.BatchNorm3d(self.lidar_features[2], affine=True),
             nn.PReLU(),
         ).to(self.dev1)
@@ -147,7 +153,8 @@ class FusedModel(nn.Module):
                 b_in  = self.fused_bandwidths[0],
                 b_out = self.fused_bandwidths[0],
                 b_inverse = self.fused_bandwidths[0],
-                grid=fused_grid_so3_2),
+                grid=fused_grid_so3_2,
+                device = self.dev2),
             nn.BatchNorm3d(self.fused_features[1], affine=True),
         ).to(self.dev2)
 
@@ -161,7 +168,8 @@ class FusedModel(nn.Module):
                 b_in  = self.fused_bandwidths[1],
                 b_out = self.fused_bandwidths[1],
                 b_inverse = self.fused_bandwidths[1],
-                grid=fused_grid_so3_1),
+                grid=fused_grid_so3_1,
+                device = self.dev2),
             nn.BatchNorm3d(self.fused_features[1] + self.skip_size, affine=True),
             nn.PReLU(),
             SO3Convolution(
@@ -170,7 +178,8 @@ class FusedModel(nn.Module):
                 b_in  = self.fused_bandwidths[1],
                 b_out = self.fused_bandwidths[1],
                 b_inverse = self.fused_bandwidths[2],
-                grid=fused_grid_so3_1),
+                grid=fused_grid_so3_1,
+                device = self.dev2),
             nn.BatchNorm3d(self.fused_features[2], affine=True),
             nn.PReLU()
         ).to(self.dev2)

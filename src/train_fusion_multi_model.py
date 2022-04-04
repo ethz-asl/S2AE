@@ -23,7 +23,7 @@ from loss import *
 # ## Initialize some parameter
 
 print(f"Initializing CUDA...")
-torch.cuda.set_device(0)
+#torch.cuda.set_device(0)
 torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
@@ -111,12 +111,12 @@ def train_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_
     print(f'Start Training')
     net.train()
     for batch_idx, (decoded, image, lidarseg_gt) in enumerate(train_loader):
-        decoded, image, lidarseg_gt = decoded.cuda(0).float(), image.cuda(0).float(), lidarseg_gt.cuda(2).long()
+        decoded, image, lidarseg_gt = decoded.float(), image.float(), lidarseg_gt.long()
 
         print(f'Encoding/Decoding')
         enc_fused_dec = net(decoded, image)
         print(f'Finished segmentation')
-        loss = criterion(enc_fused_dec, lidarseg_gt)
+        loss = criterion(enc_fused_dec, lidarseg_gt.cuda(2))
         print(f'computed loss: {loss}')
 
         optimizer.zero_grad()

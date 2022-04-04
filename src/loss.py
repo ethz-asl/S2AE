@@ -112,7 +112,7 @@ class MainLoss(nn.Module):
     def forward(self, decoded, teacher, size_average=True, batch_all=True):
 #         wce_losses = F.cross_entropy(decoded, teacher, weight=self.class_weights, size_average=size_average, ignore_index=250)
         #nll_losses = F.nll_loss(F.log_softmax(decoded, dim=1), teacher, weight=self.class_weights, size_average=size_average)
-        losses = F.nll_loss(F.log_softmax(decoded, dim=1), teacher, size_average=size_average)
+        losses = F.nll_loss(F.log_softmax(decoded, dim=1).cuda(2), teacher, size_average=size_average).cuda(2)
         #lz_losses = lovasz_softmax(F.softmax(decoded, dim=1), teacher)
 #         tv_losses = tv_loss(decoded, teacher)
 
