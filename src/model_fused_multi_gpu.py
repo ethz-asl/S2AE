@@ -58,7 +58,7 @@ class FusedModel(nn.Module):
                 b_in  = self.image_bandwidths[0],
                 b_out = self.image_bandwidths[1],
                 b_inverse = self.image_bandwidths[1],
-                grid=image_grid_s2,
+                grid = image_grid_s2,
                 device = self.dev0),
             nn.BatchNorm3d(self.image_features[1], affine=True),
             nn.PReLU(),
@@ -68,7 +68,7 @@ class FusedModel(nn.Module):
                 b_in  = self.image_bandwidths[1],
                 b_out = self.image_bandwidths[1],
                 b_inverse = self.image_bandwidths[1],
-                grid=image_grid_so3_1,
+                grid = image_grid_so3_1,
                 device = self.dev0),
             nn.BatchNorm3d(self.image_features[1], affine=True),
             nn.PReLU()
@@ -203,20 +203,24 @@ class FusedModel(nn.Module):
     def forward(self, x_lidar, x_img):
 
         # Image encoder:
+        torch.cuda.set_device(0)
         e1_img = self.image_conv1(x_img.to(self.dev0))
         e2_img = self.image_conv2(self.image_max_pool1(e1_img))
         print(f'Finished image encoding')
 
         # LiDAR encoder:
+        torch.cuda.set_device(1)
         e1_lidar = self.lidar_conv1(x_lidar.to(self.dev1))
         e2_lidar = self.lidar_conv2(self.lidar_max_pool1(e1_lidar))
         print(f'Finished lidar encoding')
 
+        torch.cuda.set_device(2)
         fused = self.fuse(e2_lidar.to(self.dev2), e2_img.to(self.dev2))
-        d1 = self.deconv1(x)
+        d1 = self.deconv1(fused)
         ud1 = self.unpool1(d1)
         d2 = self.deconv2(ud1)
         dec = so3_to_s2_integrate(d2)
         print(f'Finished decoding')
 
+        torch.cuda.set_device(0)
         return dec

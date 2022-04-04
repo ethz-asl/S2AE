@@ -23,8 +23,8 @@ from loss import *
 # ## Initialize some parameter
 
 print(f"Initializing CUDA...")
-#torch.cuda.set_device(0)
-torch.backends.cudnn.benchmark = True
+torch.cuda.set_device(0)
+torch.backends.cudnn.benchmark = False
 
 print(f"Setting parameters...")
 bandwidth = 100
