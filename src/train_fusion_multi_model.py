@@ -23,7 +23,7 @@ from loss import *
 # ## Initialize some parameter
 
 print(f"Initializing CUDA...")
-#torch.cuda.set_device(0)
+torch.cuda.set_device(0)
 torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
@@ -111,7 +111,7 @@ def train_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_
     print(f'Start Training')
     net.train()
     for batch_idx, (decoded, image, lidarseg_gt) in enumerate(train_loader):
-        decoded, image, lidarseg_gt = decoded.float(), image.float(), lidarseg_gt.long()
+        decoded, image, lidarseg_gt = decoded.float(), image.float(), lidarseg_gt.cuda(0).long()
 
         print(f'Encoding/Decoding')
         enc_fused_dec = net(decoded, image)
@@ -143,7 +143,7 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     net.eval()
     with torch.no_grad():
         for batch_idx, (decoded, image, lidarseg_gt) in enumerate(val_loader):
-            decoded, image, lidarseg_gt = decoded.cuda(0).float(), image.cuda(0).float(), lidarseg_gt.cuda(1).long()
+            decoded, image, lidarseg_gt = decoded.float(), image.float(), lidarseg_gt.cuda(0).long()
             enc_fused_dec = net(decoded, image)
 
             optimizer.zero_grad()
