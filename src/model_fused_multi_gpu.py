@@ -70,7 +70,7 @@ class FusedModel(nn.Module):
                 grid=image_grid_so3_1),
             nn.BatchNorm3d(self.image_features[1], affine=True),
             nn.PReLU()
-        ).to(self.dev1)
+        ).to(self.dev0)
 
         self.image_max_pool1 = SO3Pooling(self.image_bandwidths[1], self.image_bandwidths[2]).to(self.dev0)
 
@@ -116,7 +116,7 @@ class FusedModel(nn.Module):
             nn.PReLU()
         ).to(self.dev1)
 
-        self.lidar_max_pool1 = SO3Pooling(self.lidar_bandwidths[1], self.lidar_bandwidths[2]).to(self.dev0)
+        self.lidar_max_pool1 = SO3Pooling(self.lidar_bandwidths[1], self.lidar_bandwidths[2]).to(self.dev1)
 
         self.lidar_conv2 = nn.Sequential(
             SO3Convolution(
@@ -128,7 +128,7 @@ class FusedModel(nn.Module):
                 grid=lidar_grid_so3_2),
             nn.BatchNorm3d(self.lidar_features[2], affine=True),
             nn.PReLU(),
-        ).to(self.dev0)
+        ).to(self.dev1)
 
         # FUSED:
         # ------------------------------------------------------------------------
@@ -149,9 +149,9 @@ class FusedModel(nn.Module):
                 b_inverse = self.fused_bandwidths[0],
                 grid=fused_grid_so3_2),
             nn.BatchNorm3d(self.fused_features[1], affine=True),
-        ).to(self.dev0)
+        ).to(self.dev2)
 
-        self.unpool1 = SO3Unpooling(self.fused_bandwidths[0], self.fused_bandwidths[1]).to(self.dev0)
+        self.unpool1 = SO3Unpooling(self.fused_bandwidths[0], self.fused_bandwidths[1]).to(self.dev2)
 
         self.skip_size = 0
         self.deconv2 = nn.Sequential(
@@ -194,19 +194,19 @@ class FusedModel(nn.Module):
     def forward(self, x_lidar, x_img):
 
         # Image encoder:
-        e1_img = self.image_conv1(x_img.to(self.dev1)).to(self.dev0)
+        e1_img = self.image_conv1(x_img.to(self.dev0))
         e2_img = self.image_conv2(self.image_max_pool1(e1_img))
         print(f'Finished image encoding')
 
         # LiDAR encoder:
-        e1_lidar = self.lidar_conv1(x_lidar.to(self.dev1)).to(self.dev0)
+        e1_lidar = self.lidar_conv1(x_lidar.to(self.dev1))
         e2_lidar = self.lidar_conv2(self.lidar_max_pool1(e1_lidar))
         print(f'Finished lidar encoding')
 
-        fused = self.fuse(e2_lidar, e2_img)
+        fused = self.fuse(e2_lidar.to(self.dev2), e2_img.to(self.dev2))
         d1 = self.deconv1(x)
         ud1 = self.unpool1(d1)
-        d2 = self.deconv2(ud1.to(self.dev2))
+        d2 = self.deconv2(ud1)
         dec = so3_to_s2_integrate(d2)
         print(f'Finished decoding')
 
