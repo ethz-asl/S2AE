@@ -214,9 +214,9 @@ class FusedDecoder(nn.Module):
 class FusedModel(nn.Module):
     def __init__(self, bandwidth=200, n_classes=32):
         super().__init__()
-        self.lidar_encoder = LidarEncoder(100, n_classes).cuda()
-        self.image_encoder = ImageEncoder(150, n_classes).cuda()
-        self.fused_decoder = FusedDecoder(10, 16).cuda()
+        self.lidar_encoder = LidarEncoder(100, n_classes).cuda(0)
+        self.image_encoder = ImageEncoder(150, n_classes).cuda(0)
+        self.fused_decoder = FusedDecoder(10, 16).cuda(0)
         
     def fuse_by_sum(self, e_lidar, e_img):
         return e_lidar + e_img

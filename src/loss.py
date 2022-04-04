@@ -104,19 +104,22 @@ class MainLoss(nn.Module):
 #         self.class_weights = np.array([0.0625, 0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625,0.0625])
         super().__init__()
 #         self.class_weights = autograd.Variable(torch.FloatTensor(self.class_weights).cuda())
-        self.class_weights = torch.from_numpy(self.class_weights).cuda(2).float()
+        self.class_weights = torch.from_numpy(self.class_weights).cuda().float()
         self.alpha = 1.1
         self.beta = 1.6
         self.gamma = 7.0
 
     def forward(self, decoded, teacher, size_average=True, batch_all=True):
 #         wce_losses = F.cross_entropy(decoded, teacher, weight=self.class_weights, size_average=size_average, ignore_index=250)
-        nll_losses = F.nll_loss(F.log_softmax(decoded, dim=1), teacher, weight=self.class_weights, size_average=size_average)
-        lz_losses = lovasz_softmax(F.softmax(decoded, dim=1), teacher)
+        #nll_losses = F.nll_loss(F.log_softmax(decoded, dim=1), teacher, weight=self.class_weights, size_average=size_average)
+        losses = F.nll_loss(F.log_softmax(decoded, dim=1), teacher, size_average=size_average)
+        #lz_losses = lovasz_softmax(F.softmax(decoded, dim=1), teacher)
 #         tv_losses = tv_loss(decoded, teacher)
 
 #         losses = self.alpha * nll_losses + self.beta * lz_losses + self.gamma * tv_losses
-        losses = self.alpha * nll_losses + self.beta * lz_losses
+        #losses = self.alpha * nll_losses + self.beta * lz_losses
+        return losses
+
         if size_average:
             if batch_all:
                 return losses.sum()/(((losses > 1e-16).sum()).float()+1e-16), losses.mean()

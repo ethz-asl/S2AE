@@ -23,13 +23,13 @@ from loss import *
 # ## Initialize some parameter
 
 print(f"Initializing CUDA...")
-# torch.cuda.set_device(0)
+torch.cuda.set_device(0)
 torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 10
+n_epochs = 1
 batch_size = 5
 num_workers = 32
 n_classes = 9
@@ -108,24 +108,26 @@ def adjust_learning_rate_exp(optimizer, epoch_num, lr):
     return new_lr
 
 def train_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_, t0):
+    print(f'Start Training')
     net.train()
     for batch_idx, (decoded, image, lidarseg_gt) in enumerate(train_loader):
-        decoded, image, lidarseg_gt = decoded.cuda(0).float(), image.cuda(1).float(), lidarseg_gt.cuda(2).long()
+        decoded, image, lidarseg_gt = decoded.cuda(0).float(), image.cuda(0).float(), lidarseg_gt.cuda(2).long()
 
+        print(f'Encoding/Decoding')
         enc_fused_dec = net(decoded, image)
-        loss, loss_total = criterion(enc_fused_dec, lidarseg_gt)
-        #loss_embedd = embedded_a.norm(2) + embedded_p.norm(2) + embedded_n.norm(2)
-        #loss = loss_triplet + 0.001 * loss_embedd
+        print(f'Finished segmentation')
+        loss = criterion(enc_fused_dec, lidarseg_gt)
+        print(f'computed loss: {loss}')
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        loss_ += loss_total.item()
+        loss_ += loss.mean()
 
         writer.add_scalar('Train/Loss', loss, n_iter)
         n_iter += 1
 
-        if batch_idx % 100 == 99:
+        if batch_idx % 10 == 9:
             t1 = time.time()
             print('[Epoch %d, Batch %4d] loss: %.8f time: %.5f lr: %.3e' %
                   (epoch + 1, batch_idx + 1, loss_ / 100, (t1 - t0) / 60, lr))
@@ -141,7 +143,7 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     net.eval()
     with torch.no_grad():
         for batch_idx, (decoded, image, lidarseg_gt) in enumerate(val_loader):
-            decoded, image, lidarseg_gt = decoded.cuda(0).float(), image.cuda(1).float(), lidarseg_gt.cuda(2).long()
+            decoded, image, lidarseg_gt = decoded.cuda(0).float(), image.cuda(0).float(), lidarseg_gt.cuda(1).long()
             enc_fused_dec = net(decoded, image)
 
             optimizer.zero_grad()
@@ -178,7 +180,7 @@ def test_fused_lidarseg(net, criterion, writer):
     net.eval()
     with torch.no_grad():
         for batch_idx, (decoded, image, lidarseg_gt) in enumerate(test_loader):
-            decoded, image, lidarseg_gt = decoded.cuda(0).float(), image.cuda(1).float(), lidarseg_gt.cuda(2).long()
+            decoded, image, lidarseg_gt = decoded.cuda(0).float(), image.cuda(0).float(), lidarseg_gt.cuda(1).long()
             enc_fused_dec = net(decoded, image)
 
             pred_segmentation = torch.argmax(enc_fused_dec, dim=1)
