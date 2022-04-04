@@ -72,9 +72,9 @@ class FusedModel(nn.Module):
             nn.PReLU()
         ).to(self.dev1)
 
-        self.max_pool1 = SO3Pooling(self.image_bandwidths[1], self.image_bandwidths[2]).to(self.dev0)
+        self.image_max_pool1 = SO3Pooling(self.image_bandwidths[1], self.image_bandwidths[2]).to(self.dev0)
 
-        self.conv2 = nn.Sequential(
+        self.image_conv2 = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.image_features[1],
                 nfeature_out = self.image_features[2],
@@ -95,7 +95,7 @@ class FusedModel(nn.Module):
         lidar_grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         lidar_grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/32, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
 
-        self.conv1 = nn.Sequential(
+        self.lidar_conv1 = nn.Sequential(
             S2Convolution(
                 nfeature_in  = self.lidar_features[0],
                 nfeature_out = self.lidar_features[1],
@@ -116,9 +116,9 @@ class FusedModel(nn.Module):
             nn.PReLU()
         ).to(self.dev1)
 
-        self.max_pool1 = SO3Pooling(self.lidar_bandwidths[1], self.lidar_bandwidths[2]).to(self.dev0)
+        self.lidar_max_pool1 = SO3Pooling(self.lidar_bandwidths[1], self.lidar_bandwidths[2]).to(self.dev0)
 
-        self.conv2 = nn.Sequential(
+        self.lidar_conv2 = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.lidar_features[1],
                 nfeature_out = self.lidar_features[2],
@@ -194,13 +194,13 @@ class FusedModel(nn.Module):
     def forward(self, x_lidar, x_img):
 
         # Image encoder:
-        e1_img = self.conv1(x_img.to(self.dev1)).to(self.dev0)
-        e2_img = self.conv2(self.max_pool1(e1_img))
+        e1_img = self.image_conv1(x_img.to(self.dev1)).to(self.dev0)
+        e2_img = self.image_conv2(self.image_max_pool1(e1_img))
         print(f'Finished image encoding')
 
         # LiDAR encoder:
-        e1_lidar = self.conv1(x_lidar.to(self.dev1)).to(self.dev0)
-        e2_lidar = self.conv2(self.max_pool1(e1_lidar))
+        e1_lidar = self.lidar_conv1(x_lidar.to(self.dev1)).to(self.dev0)
+        e2_lidar = self.lidar_conv2(self.lidar_max_pool1(e1_lidar))
         print(f'Finished lidar encoding')
 
         fused = self.fuse(e2_lidar, e2_img)
