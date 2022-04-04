@@ -45,7 +45,7 @@ class FusedModel(nn.Module):
         # ------------------------------------------------------------------------
 
         self.image_features = [3, 80, 150]
-        self.image_bandwidths = [bandwidth, 20, 10]
+        self.image_bandwidths = [150, 20, 10]
 
         image_grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1)
         image_grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
@@ -88,8 +88,8 @@ class FusedModel(nn.Module):
 
         # LiDAR:
         # ------------------------------------------------------------------------
-        self.lidar_features = [n_classes, 80, 150]
-        self.lidar_bandwidths = [bandwidth, 20, 10]
+        self.lidar_features = [9, 80, 150]
+        self.lidar_bandwidths = [100, 20, 10]
 
         lidar_grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1)
         lidar_grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
