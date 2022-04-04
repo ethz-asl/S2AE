@@ -7,3 +7,6 @@
 [submodule "deps/cupy"]
 	path = deps/cupy
 	url = https://github.com/cupy/cupy
+[submodule "deps/s2cnn"]
+	path = deps/s2cnn
+	url = git@github.com:ethz-asl/s2cnn.git
