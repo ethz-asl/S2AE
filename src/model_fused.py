@@ -35,7 +35,7 @@ class ImageEncoder(nn.Module):
     def __init__(self, bandwidth, n_classes):
         super().__init__()
 
-        self.features = [3, 32, 64]
+        self.features = [3, 32, 128]
         self.bandwidths = [bandwidth, 40, 30]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1)
@@ -90,7 +90,7 @@ class LidarEncoder(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        self.features = [n_classes, 32, 64]
+        self.features = [n_classes, 32, 128]
         self.bandwidths = [bandwidth, 40, 30]
 
 #         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
@@ -148,7 +148,7 @@ class FusedDecoder(nn.Module):
     def __init__(self, bandwidth=10, n_classes=32):
         super().__init__()
 
-        self.features = [128, 32, 9]
+        self.features = [256, 32, 9]
         self.bandwidths = [30, 40, 100]
 
 #         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
@@ -171,7 +171,7 @@ class FusedDecoder(nn.Module):
 
         self.unpool1 = SO3Unpooling(self.bandwidths[0], self.bandwidths[1]) # 10 to 15 bw
 
-        self.skip_size = 32 + 32
+        self.skip_size = 32+ 32
 
         self.deconv2 = nn.Sequential(
             SO3Convolution(

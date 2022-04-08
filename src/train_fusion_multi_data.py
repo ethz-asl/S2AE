@@ -34,15 +34,19 @@ n_epochs = 4
 batch_size = 10
 num_workers = 20
 n_classes = 9
+device_ids = [0, 1, 2, 3, 4]
 
 print(f"Initializing data structures...")
+print(f'Training will run on these gpus {device_ids}')
+print(f'We have a batch size of {batch_size} and {n_epochs} epochs.')
+print(f'We will use {num_workers} workers')
 model = FusedModel(bandwidth=bandwidth, n_classes=n_classes).cuda(0)
-net = nn.DataParallel(model, device_ids = [0, 1, 2, 3, 4]).to(0)
+net = nn.DataParallel(model, device_ids = device_ids).to(0)
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 criterion = MainLoss()
 
 writer = SummaryWriter()
-model_save = 'fused_model.pkl'
+model_save = 'fused_model_1.pkl'
 
 print(f"All instances initialized.")
 
