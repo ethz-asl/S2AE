@@ -35,13 +35,13 @@ class ImageEncoder(nn.Module):
     def __init__(self, bandwidth, n_classes):
         super().__init__()
 
-        self.features = [3, 16, 32]
-        self.bandwidths = [bandwidth, 15, 10]
+        self.features = [3, 32, 64]
+        self.bandwidths = [bandwidth, 40, 20]
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/32, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        
+
         self.conv1 = nn.Sequential(
             S2Convolution(
                 nfeature_in  = self.features[0],
@@ -62,9 +62,9 @@ class ImageEncoder(nn.Module):
             nn.BatchNorm3d(self.features[1], affine=True),
             nn.PReLU()
         )
-        
+
         self.max_pool1 = SO3Pooling(self.bandwidths[1], self.bandwidths[2])
-        
+
         self.conv2 = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.features[1],
@@ -76,13 +76,13 @@ class ImageEncoder(nn.Module):
             nn.BatchNorm3d(self.features[2], affine=True),
             nn.PReLU(),
         )
-        
+
     def forward(self, x):
         e1 = self.conv1(x)
 #         mp = self.max_pool1(e1)
 #         e2 = self.conv2(mp)
         e2 = self.conv2(self.max_pool1(e1))
-        
+
 #         return so3_to_s2_integrate(e2)
         return e1, e2
 
@@ -90,17 +90,17 @@ class LidarEncoder(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        self.features = [n_classes, 16, 32]
-        self.bandwidths = [bandwidth, 15, 10]
+        self.features = [n_classes, 32, 64]
+        self.bandwidths = [bandwidth, 40, 20]
 
 #         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
 #         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
 #         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        
+
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/32, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        
+
         self.conv1 = nn.Sequential(
             S2Convolution(
                 nfeature_in  = self.features[0],
@@ -121,9 +121,9 @@ class LidarEncoder(nn.Module):
             nn.BatchNorm3d(self.features[1], affine=True),
             nn.PReLU()
         )
-        
+
         self.max_pool1 = SO3Pooling(self.bandwidths[1], self.bandwidths[2])
-        
+
         self.conv2 = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.features[1],
@@ -135,12 +135,12 @@ class LidarEncoder(nn.Module):
             nn.BatchNorm3d(self.features[2], affine=True),
             nn.PReLU(),
         )
-        
+
     def forward(self, x):
         # Encoder
         e1 = self.conv1(x)
         e2 = self.conv2(self.max_pool1(e1))
-        
+
 #         return so3_to_s2_integrate(e2)
         return e1, e2
 
@@ -148,15 +148,15 @@ class FusedDecoder(nn.Module):
     def __init__(self, bandwidth=10, n_classes=32):
         super().__init__()
 
-        self.features = [64, 16, 9]
-        self.bandwidths = [10, 15, 100]
+        self.features = [128, 32, 9]
+        self.bandwidths = [20, 40, 100]
 
 #         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
 #         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        
+
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/32, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        
+
         self.deconv1 = nn.Sequential(
             nn.Dropout(p=0.1),
             SO3Convolution(
@@ -168,11 +168,11 @@ class FusedDecoder(nn.Module):
                 grid=grid_so3_2),
             nn.BatchNorm3d(self.features[1], affine=True),
         )
-        
+
         self.unpool1 = SO3Unpooling(self.bandwidths[0], self.bandwidths[1]) # 10 to 15 bw
-        
-        self.skip_size = 16 + 16
-        
+
+        self.skip_size = 32 + 32
+
         self.deconv2 = nn.Sequential(
             SO3Convolution(
                 nfeature_in  = self.features[1] + self.skip_size,
@@ -193,8 +193,7 @@ class FusedDecoder(nn.Module):
             nn.BatchNorm3d(self.features[2], affine=True),
             nn.PReLU()
         )
-        
-        
+
         self.lsm = nn.LogSoftmax(dim=1)
         self.sm = nn.Softmax(dim=1)
 
@@ -206,10 +205,9 @@ class FusedDecoder(nn.Module):
         ud1 = self.unpool1(d1)
         e_ud1 = torch.cat([e_img_lidar, ud1], dim=1)
         d2 = self.deconv2(e_ud1)
-        
+
         # return self.sm(so3_to_s2_integrate(d4))
         return so3_to_s2_integrate(d2)
-
 
 class FusedModel(nn.Module):
     def __init__(self, bandwidth=200, n_classes=32):
@@ -217,17 +215,20 @@ class FusedModel(nn.Module):
         self.lidar_encoder = LidarEncoder(100, n_classes).cuda(0)
         self.image_encoder = ImageEncoder(150, n_classes).cuda(0)
         self.fused_decoder = FusedDecoder(10, 16).cuda(0)
-        
+
+        print(f'LidarEncoder with: {self.lidar_encoder.features} features and {self.lidar_encoder.bandwidths} bandwith')
+        print(f'ImageEncoder with: {self.image_encoder.features} features and {self.image_encoder.bandwidths} bandwith')
+        print(f'FusedEncoder with: {self.fused_decoder.features} features and {self.fused_decoder.bandwidths} bandwith')
+
     def fuse_by_sum(self, e_lidar, e_img):
         return e_lidar + e_img
-    
+
     def fuse_by_avg(self, e_lidar, e_img):
         return (e_lidar + e_img) / 2
-    
+
     def fuse_by_concat(self, e_lidar, e_img):
         return torch.cat([e_lidar, e_img], dim=1)
-        
-    
+
     def fuse(self, e_lidar, e_img):
 #         return self.fuse_by_sum(e_lidar, e_img)
 #         return self.fuse_by_avg(e_lidar, e_img)
@@ -238,4 +239,3 @@ class FusedModel(nn.Module):
         e1_img, e2_img = self.image_encoder(x_img)
         fused = self.fuse(e2_lidar, e2_img)
         return self.fused_decoder(fused, torch.cat([e1_lidar, e1_img], dim=1))
-        

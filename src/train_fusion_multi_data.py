@@ -30,14 +30,14 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 1
+n_epochs = 4
 batch_size = 10
-num_workers = 32
+num_workers = 20
 n_classes = 9
 
 print(f"Initializing data structures...")
-net = FusedModel(bandwidth=bandwidth, n_classes=n_classes).cuda(0)
-net = nn.DataParallel(net, device_ids = [0, 1, 2]).to(0)
+model = FusedModel(bandwidth=bandwidth, n_classes=n_classes).cuda(0)
+net = nn.DataParallel(model, device_ids = [0, 1, 2, 3, 4]).to(0)
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 criterion = MainLoss()
 
@@ -55,9 +55,9 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 export_ds = '/cluster/work/riner/users/berlukas'
 
 # training
-img_filename = f"{export_ds}/color_images_150_400.npy"
-cloud_filename = f"{export_ds}/sem_clouds_100_400.npy"
-sem_clouds_filename = f"{export_ds}/sem_clouds_decoded_400.npy"
+img_filename = f"{export_ds}/color_images_150.npy"
+cloud_filename = f"{export_ds}/sem_clouds.npy"
+sem_clouds_filename = f"{export_ds}/sem_clouds_decoded.npy"
 
 # testing
 dec_input_clouds = f"{export_ds}/decoded_fused_input_clouds.npy"
@@ -69,7 +69,7 @@ print(f"Loading from images from {img_filename}, clouds from {cloud_filename} an
 img_features = np.load(img_filename)
 print('Loaded images.')
 cloud_features = np.load(cloud_filename)
-# cloud_features = cloud_features[:, 2, :, :]
+cloud_features = cloud_features[:, 2, :, :]
 print('Loaded clouds.')
 sem_cloud_features = np.load(sem_clouds_filename)
 print('Loaded decoded.')
@@ -115,18 +115,16 @@ def train_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_
 
         enc_fused_dec = net(decoded, image)
         loss = criterion(enc_fused_dec, lidarseg_gt)
-        #loss_embedd = embedded_a.norm(2) + embedded_p.norm(2) + embedded_n.norm(2)
-        #loss = loss_triplet + 0.001 * loss_embedd
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        loss_ += loss.mean()
+        loss_ += loss.mean().item()
 
         writer.add_scalar('Train/Loss', loss, n_iter)
         n_iter += 1
 
-        if batch_idx % 10 == 9:
+        if batch_idx % 100 == 99:
             t1 = time.time()
             print('[Epoch %d, Batch %4d] loss: %.8f time: %.5f lr: %.3e' %
                   (epoch + 1, batch_idx + 1, loss_ / 100, (t1 - t0) / 60, lr))
@@ -207,6 +205,11 @@ def test_fused_lidarseg(net, criterion, writer):
         writer.add_scalar('Test/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, n_iter)
         writer.add_scalar('Test/AvgJaccardIndex', avg_jacc.avg, n_iter)
         writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)
+
+        print(f'Average Pixel Accuracy: {avg_pixel_acc.avg}')
+        print(f'Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
+        print(f'Average Jaccard Index: {avg_jacc.avg}')
+        print(f'Average DICE Coefficient: {avg_dice.avg}')
 
     return all_input_clouds, all_input_images, all_decoded_clouds, all_gt_clouds
 
