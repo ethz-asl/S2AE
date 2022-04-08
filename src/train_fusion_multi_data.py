@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
+import nvidia_smi
 
 from data_splitter import DataSplitter
 from training_set import TrainingSetFusedSeg
@@ -237,6 +238,14 @@ for epoch in tqdm(range(n_epochs)):
 print("Training finished!")
 torch.save(net.state_dict(), model_save)
 
+# Show GPU Utilization
+nvidia_smi.nvmlInit()
+deviceCount = nvidia_smi.nvmlDeviceGetCount()
+for i in range(deviceCount):
+    handle = nvidia_smi.nvmlDeviceGetHandleByIndex(i)
+    info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
+    print("Device {}: {}, Memory : ({:.2f}% free): {}(total), {} (free), {} (used)".format(i, nvidia_smi.nvmlDeviceGetName(handle), 100*info.free/info.total, info.total, info.free, info.used))
+nvidia_smi.nvmlShutdown()
 
 # ## Testing
 
