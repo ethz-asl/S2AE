@@ -1,60 +1,54 @@
 #!/usr/bin/env python3
+
 import math
-import sys
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
-import open3d as o3d
-from scipy import spatial
 
 import torch
+import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
-from torchsummary import summary
 from tqdm.auto import tqdm
+import nvidia_smi
 
 from data_splitter import DataSplitter
 from training_set import TrainingSetLidarSeg
-from loss import *
-# from model_simple_for_testing import ModelSimpleForTesting
-# from model_fcn import ModelFCN
-# from model_unet import ModelUnet
-from model_segnet import ModelSegnet
 from model import Model
-from sphere import Sphere
-from visualize import Visualize
-from metrics import *
 from average_meter import AverageMeter
+
+from metrics import *
+from loss import *
     
 # ## Initialize some parameter
 print(f"Initializing CUDA...")
-torch.cuda.set_device(0)
+# torch.cuda.set_device(0)
 torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 20
-batch_size = 5
+n_epochs = 4
+batch_size = 10
 num_workers = 32
 n_classes = 9
+device_ids = [0, 1, 2, 3, 4]
 
 print(f"Initializing data structures...")
+print(f'Training will run on these gpus {device_ids}')
+print(f'We have a batch size of {batch_size} and {n_epochs} epochs.')
+print(f'We will use {num_workers} workers')
 # net = ModelSimpleForTesting(bandwidth=bandwidth, n_classes=n_classes).cuda()
 # net = ModelUnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
 # net = ModelSegnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
-net = Model(bandwidth=bandwidth, n_classes=n_classes).cuda()
+model = Model(bandwidth=bandwidth, n_classes=n_classes).cuda(0)
+net = nn.DataParallel(model, device_ids = device_ids).to(0)
 
 #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
-# criterion = L2Loss(alpha=0.5, margin=0.2)
-# criterion = CrossEntropyLoss(n_classes=n_classes)
-# criterion = NegativeLogLikelihoodLoss(n_classes=n_classes)
 criterion = MainLoss()
-
 writer = SummaryWriter()
-model_save = 'test_training_params.pkl'
+model_save = 'lidar_network_1.pkl'
 
 print(f"All instances initialized.")
 
@@ -62,53 +56,28 @@ print(f"All instances initialized.")
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
-export_ds = '/media/scratch/berlukas/nuscenes'
+# export_ds = '/media/scratch/berlukas/nuscenes'
+export_ds = '/cluster/work/riner/users/berlukas'
 
 # training
-img_filename = f"{export_ds}/images.npy"
-cloud_filename = f"{export_ds}/clouds1.npy"
-sem_clouds_filename = f"{export_ds}/new_sem_classes_gt1.npy"
+cloud_filename = f"{export_ds}/sem_clouds.npy"
 
 # testing
-dec_input = f"{export_ds}/decoded_input.npy"
-dec_clouds = f"{export_ds}/decoded.npy"
-dec_gt = f"{export_ds}/decoded_gt.npy"
+dec_input = f"{export_ds}/decoded_input_lidar.npy"
+dec_clouds = f"{export_ds}/decoded_lidar.npy"
+dec_gt = f"{export_ds}/decoded_gt_lidar.npy"
 
-print(f"Loading from images from {img_filename}, clouds from {cloud_filename} and sem clouds from {sem_clouds_filename}")
-#img_features = np.load(img_filename)
-img_features = np.zeros((1,1,1))
+print(f"Loading clouds from {cloud_filename}.")
 cloud_features = np.load(cloud_filename)
-sem_cloud_features = np.load(sem_clouds_filename)
-print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
+# --- TEST TRAINING --------------------------------------------------
+# n_process = 200
+# cloud_features = cloud_features[0:n_process, :, :, :]
+# ----------------- --------------------------------------------------
 
-# training 2
-# cloud_filename = f"{export_ds}/clouds2.npy"
-# sem_clouds_filename = f"{export_ds}/new_sem_classes_gt2.npy"
-
-# cloud_features_2 = np.load(cloud_filename)
-# sem_cloud_features_2 = np.load(sem_clouds_filename)
-# print(f"Shape of clouds (2) is {cloud_features_2.shape} and sem clouds (2) is {sem_cloud_features_2.shape}")
-
-# training 3
-# cloud_filename = f"{export_ds}/clouds3.npy"
-# sem_clouds_filename = f"{export_ds}/new_sem_classes_gt3.npy"
-
-# cloud_features_3 = np.load(cloud_filename)
-# sem_cloud_features_3 = np.load(sem_clouds_filename)
-# print(f"Shape of clouds (3) is {cloud_features_3.shape} and sem clouds (3) is {sem_cloud_features_3.shape}")
-
-# cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
-# sem_cloud_features = np.concatenate((sem_cloud_features, sem_cloud_features_2, sem_cloud_features_3))
-
-# print(f"Shape of the final clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
-
-#n_process = 30
-#img_features = img_features[0:n_process, :, :, :]
-#cloud_features = cloud_features[0:n_process, :, :, :]
-#sem_cloud_features = sem_cloud_features[0:n_process, :, :]
-#print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
-
+sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
+cloud_features = cloud_features[:, 0:2, :, :]
+print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
 # Initialize the data loaders
 train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
@@ -145,14 +114,12 @@ def train_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_, t0):
         cloud, lidarseg_gt = cloud.cuda().float(), lidarseg_gt.cuda().long()
         
         enc_dec_cloud = net(cloud)
-        loss, loss_total = criterion(enc_dec_cloud, lidarseg_gt)
-        #loss_embedd = embedded_a.norm(2) + embedded_p.norm(2) + embedded_n.norm(2)
-        #loss = loss_triplet + 0.001 * loss_embedd
+        loss = criterion(enc_dec_cloud, lidarseg_gt)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        loss_ += loss_total.item()
+        loss_ += loss.mean().item()
 
         writer.add_scalar('Train/Loss', loss, n_iter)
         n_iter += 1
@@ -177,8 +144,8 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             enc_dec_cloud = net(cloud)
 
             optimizer.zero_grad()
-            loss, loss_total = criterion(enc_dec_cloud, lidarseg_gt)
-            writer.add_scalar('Validation/Loss', loss, n_iter)
+            loss = criterion(enc_dec_cloud, lidarseg_gt)
+            writer.add_scalar('Validation/Loss', loss.mean().item(), n_iter)
 
             pred_segmentation = torch.argmax(enc_dec_cloud, dim=1)
             pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
@@ -237,6 +204,11 @@ def test_lidarseg(net, criterion, writer):
         writer.add_scalar('Test/AvgJaccardIndex', avg_jacc.avg, n_iter)
         writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)
 
+        print(f'Average Pixel Accuracy: {avg_pixel_acc.avg}')
+        print(f'Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
+        print(f'Average Jaccard Index: {avg_jacc.avg}')
+        print(f'Average DICE Coefficient: {avg_dice.avg}')
+
     return all_input_clouds, all_decoded_clouds, all_gt_clouds
 
 
@@ -257,6 +229,15 @@ for epoch in tqdm(range(n_epochs)):
 
 print("Training finished!")
 torch.save(net.state_dict(), model_save)
+
+# Show GPU Utilization
+nvidia_smi.nvmlInit()
+deviceCount = nvidia_smi.nvmlDeviceGetCount()
+for i in range(deviceCount):
+    handle = nvidia_smi.nvmlDeviceGetHandleByIndex(i)
+    info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
+    print("Device {}: {}, Memory : ({:.2f}% free): {}(total), {} (free), {} (used)".format(i, nvidia_smi.nvmlDeviceGetName(handle), 100*info.free/info.total, info.total, info.free, info.used))
+nvidia_smi.nvmlShutdown()
 
 
 # ## Testing
