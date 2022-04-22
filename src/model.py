@@ -35,8 +35,21 @@ class Model(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        self.features = [2, 20, 40, 120, 180, 120, 40, 20, n_classes]
-        self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
+        # v1
+        #self.features = [2, 20, 40, 120, 180, 120, 40, 20, n_classes]
+        #self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
+
+        # small model 5x11GB
+        #self.features = [2, 20, 40, 60, 100, 60, 40, 20, n_classes]
+        #self.bandwidths = [bandwidth, 50, 30, 15, 10, 8, 10, 15, 30, 50, bandwidth]
+
+        # big model 5x24GB
+        self.features = [2, 20, 40, 60, 120, 60, 40, 20, n_classes]
+        self.bandwidths = [bandwidth, 50, 40, 30, 20, 10, 20, 30, 40, 50, bandwidth]
+
+
+        print(f'[Model] We have {self.features} features.' )
+        print(f'[Model] We have {self.bandwidths} bandwidths.' )
 
         grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
         grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)

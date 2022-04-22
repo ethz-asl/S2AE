@@ -9,7 +9,7 @@ from s2cnn import s2_mm, so3_mm
 from s2cnn import s2_rft, so3_rft
 
 class SO3Convolution(Module):
-    def __init__(self, nfeature_in, nfeature_out, b_in, b_out, b_inverse, grid):
+    def __init__(self, nfeature_in, nfeature_out, b_in, b_out, b_inverse, grid, device='cuda:0'):
         '''
         :param nfeature_in: number of input fearures
         :param nfeature_out: number of output features
@@ -24,8 +24,8 @@ class SO3Convolution(Module):
         self.b_out = b_out
         self.b_inverse = b_inverse
         self.grid = grid
-        self.kernel = Parameter(torch.empty(nfeature_in, nfeature_out, len(grid)).uniform_(-1, 1))
-        self.bias = Parameter(torch.zeros(1, nfeature_out, 1, 1, 1))
+        self.kernel = Parameter(torch.empty(nfeature_in, nfeature_out, len(grid)).uniform_(-1, 1).to(device))
+        self.bias = Parameter(torch.zeros(1, nfeature_out, 1, 1, 1).to(device))
 
         # When useing ADAM optimizer, the variance of each componant of the gradient
         # is normalized by ADAM around 1.
