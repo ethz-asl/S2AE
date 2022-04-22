@@ -10,7 +10,7 @@ from s2cnn import s2_mm
 from s2cnn import s2_rft
 
 class S2Convolution(Module):
-    def __init__(self, nfeature_in, nfeature_out, b_in, b_out, b_inverse, grid):
+    def __init__(self, nfeature_in, nfeature_out, b_in, b_out, b_inverse, grid, device='cuda:0'):
         '''
         :param nfeature_in: number of input fearures
         :param nfeature_out: number of output features
@@ -25,9 +25,9 @@ class S2Convolution(Module):
         self.b_out = b_out
         self.b_inverse = b_inverse
         self.grid = grid
-        self.kernel = Parameter(torch.empty(nfeature_in, nfeature_out, len(grid)).uniform_(-1, 1))
+        self.kernel = Parameter(torch.empty(nfeature_in, nfeature_out, len(grid)).uniform_(-1, 1).to(device))
         self.scaling = 1. / math.sqrt(len(self.grid) * self.nfeature_in * (self.b_out ** 4.) / (self.b_in ** 2.))
-        self.bias = Parameter(torch.zeros(1, nfeature_out, 1, 1, 1))
+        self.bias = Parameter(torch.zeros(1, nfeature_out, 1, 1, 1).to(device))
 
     def forward(self, x):  # pylint: disable=W
         '''
