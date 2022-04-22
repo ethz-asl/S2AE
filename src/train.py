@@ -27,8 +27,8 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 4
-batch_size = 10
+n_epochs = 8
+batch_size = 5
 num_workers = 32
 n_classes = 9
 device_ids = [0, 1, 2, 3, 4]
@@ -48,7 +48,7 @@ optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
 criterion = MainLoss()
 writer = SummaryWriter()
-model_save = 'lidar_network_1.pkl'
+model_save = 'lidar_network_new.pkl'
 
 print(f"All instances initialized.")
 
@@ -71,8 +71,8 @@ print(f"Loading clouds from {cloud_filename}.")
 cloud_features = np.load(cloud_filename)
 
 # --- TEST TRAINING --------------------------------------------------
-# n_process = 200
-# cloud_features = cloud_features[0:n_process, :, :, :]
+#n_process = 200
+#cloud_features = cloud_features[0:n_process, :, :, :]
 # ----------------- --------------------------------------------------
 
 sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
