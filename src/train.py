@@ -27,9 +27,9 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 8
+n_epochs = 2
 batch_size = 5
-num_workers = 32
+num_workers = 15
 n_classes = 9
 device_ids = [0, 1, 2, 3, 4]
 
@@ -71,8 +71,8 @@ print(f"Loading clouds from {cloud_filename}.")
 cloud_features = np.load(cloud_filename)
 
 # --- TEST TRAINING --------------------------------------------------
-#n_process = 200
-#cloud_features = cloud_features[0:n_process, :, :, :]
+n_process = 200
+cloud_features = cloud_features[0:n_process, :, :, :]
 # ----------------- --------------------------------------------------
 
 sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
@@ -163,6 +163,18 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)
     return n_iter
 
+def save_checkpoint(net, optimizer, criterion, n_epoch):
+    checkpoint_path = f'./checkpoints/model{n_epoch}.pth'
+    torch.save({
+            'epoch': n_epoch,
+            'model_state_dict': net.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': criterion,
+            }, checkpoint_path)
+    print('================================')
+    print(f'Saved checkpoint to {checkpoint_path}')
+    print('================================')
+
 def test_lidarseg(net, criterion, writer):
     all_input_clouds = [None] * test_size
     all_decoded_clouds = [None] * test_size
@@ -226,6 +238,7 @@ for epoch in tqdm(range(n_epochs)):
     train_iter = train_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)    
     val_iter = validate_lidarseg(net, criterion, optimizer, writer, epoch, val_iter)
     writer.add_scalar('Train/lr', lr, epoch)
+    save_checkpoint(net, optimizer, criterion, epoch)
 
 print("Training finished!")
 torch.save(net.state_dict(), model_save)
