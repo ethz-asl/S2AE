@@ -2,6 +2,7 @@
 
 import math
 import time
+import datetime
 
 import numpy as np
 
@@ -31,7 +32,8 @@ n_epochs = 2
 batch_size = 5
 num_workers = 15
 n_classes = 9
-device_ids = [0, 1, 2, 3, 4]
+# device_ids = [0, 1, 2, 3, 4]
+device_ids = [0]
 
 print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')
@@ -48,19 +50,23 @@ optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
 criterion = MainLoss()
 writer = SummaryWriter()
-model_save = 'lidar_network_new.pkl'
+timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+model_save = f'test_lidarseg_{timestamp}'
 
-print(f"All instances initialized.")
+print('\n')
+print(f'All instances initialized.')
+print(f'Saving final model to {model_save}')
 
 
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
-# export_ds = '/media/scratch/berlukas/nuscenes'
-export_ds = '/cluster/work/riner/users/berlukas'
+export_ds = '/media/scratch/berlukas/nuscenes'
+# export_ds = '/cluster/work/riner/users/berlukas'
 
 # training
-cloud_filename = f"{export_ds}/sem_clouds.npy"
+# cloud_filename = f"{export_ds}/sem_clouds.npy"
+cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
 
 # testing
 dec_input = f"{export_ds}/decoded_input_lidar.npy"
@@ -164,7 +170,7 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     return n_iter
 
 def save_checkpoint(net, optimizer, criterion, n_epoch):
-    checkpoint_path = f'./checkpoints/model{n_epoch}.pth'
+    checkpoint_path = f'./checkpoints/{model_save}_{n_epoch}.pth'
     torch.save({
             'epoch': n_epoch,
             'model_state_dict': net.state_dict(),
@@ -224,7 +230,7 @@ def test_lidarseg(net, criterion, writer):
     return all_input_clouds, all_decoded_clouds, all_gt_clouds
 
 
-# ## Training Loop
+# Training Loop
 
 abort = False
 train_iter = 0
@@ -241,7 +247,9 @@ for epoch in tqdm(range(n_epochs)):
     save_checkpoint(net, optimizer, criterion, epoch)
 
 print("Training finished!")
-torch.save(net.state_dict(), model_save)
+final_save_path = f'./{model_save}.pkl'
+torch.save(net.state_dict(), final_save_path)
+print(f'Saved final weights to {final_save_path}.')
 
 # Show GPU Utilization
 nvidia_smi.nvmlInit()
@@ -253,16 +261,15 @@ for i in range(deviceCount):
 nvidia_smi.nvmlShutdown()
 
 
-# ## Testing
+# Testing
+if test_size > 0:
+    print("Starting testing...")
+    torch.cuda.empty_cache()
+    input_clouds, decoded_clouds, gt_clouds = test_lidarseg(net, criterion, writer)
 
-print("Starting testing...")
+    np.save(dec_input, input_clouds)
+    np.save(dec_gt, gt_clouds)
+    np.save(dec_clouds, decoded_clouds)
 
-torch.cuda.empty_cache()
-input_clouds, decoded_clouds, gt_clouds = test_lidarseg(net, criterion, writer)
-
-np.save(dec_input, input_clouds)
-np.save(dec_gt, gt_clouds)
-np.save(dec_clouds, decoded_clouds)
-
-writer.close()
-print("Testing finished!")
+    writer.close()
+    print("Testing finished!")
