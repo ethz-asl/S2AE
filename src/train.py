@@ -32,8 +32,7 @@ n_epochs = 2
 batch_size = 5
 num_workers = 15
 n_classes = 9
-# device_ids = [0, 1, 2, 3, 4]
-device_ids = [0]
+device_ids = [0, 1, 2, 3, 4]
 
 print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')
@@ -61,12 +60,12 @@ print(f'Saving final model to {model_save}')
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
-export_ds = '/media/scratch/berlukas/nuscenes'
-# export_ds = '/cluster/work/riner/users/berlukas'
+# export_ds = '/media/scratch/berlukas/nuscenes'
+export_ds = '/cluster/work/riner/users/berlukas'
 
 # training
-# cloud_filename = f"{export_ds}/sem_clouds.npy"
-cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
+cloud_filename = f"{export_ds}/sem_clouds.npy"
+# cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
 
 # testing
 dec_input = f"{export_ds}/decoded_input_lidar.npy"
@@ -77,8 +76,8 @@ print(f"Loading clouds from {cloud_filename}.")
 cloud_features = np.load(cloud_filename)
 
 # --- TEST TRAINING --------------------------------------------------
-n_process = 200
-cloud_features = cloud_features[0:n_process, :, :, :]
+# n_process = 200
+# cloud_features = cloud_features[0:n_process, :, :, :]
 # ----------------- --------------------------------------------------
 
 sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
@@ -88,7 +87,7 @@ print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_feat
 # Initialize the data loaders
 train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
 print(f"Total size of the training set: {len(train_set)}")
-split = DataSplitter(train_set, False, test_train_split=0.95, val_train_split=0.05, shuffle=True)
+split = DataSplitter(train_set, False, test_train_split=1.0, val_train_split=0.05, shuffle=True)
 
 # Split the data into train, val and optionally test
 train_loader, val_loader, test_loader = split.get_split(
