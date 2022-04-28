@@ -30,7 +30,7 @@ bandwidth = 100
 learning_rate = 1e-3
 n_epochs = 10
 batch_size = 10
-num_workers = 15
+num_workers = 32
 n_classes = 9
 device_ids = [0, 1, 2, 3, 4]
 
@@ -63,38 +63,71 @@ print(f'Saving final model to {model_save}')
 # export_ds = '/media/scratch/berlukas/nuscenes'
 export_ds = '/cluster/work/riner/users/berlukas'
 
-# training
-cloud_filename = f"{export_ds}/sem_clouds.npy"
-# cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
 
 # testing
 dec_input = f"{export_ds}/decoded_input_lidar.npy"
 dec_clouds = f"{export_ds}/decoded_lidar.npy"
 dec_gt = f"{export_ds}/decoded_gt_lidar.npy"
 
+# training
+cloud_filename = f"{export_ds}/sem_clouds.npy"
 print(f"Loading clouds from {cloud_filename}.")
 cloud_features = np.load(cloud_filename)
+# cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
+
+
+# --- DATA MERGING ---------------------------------------------------
+cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
+cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
+
+cloud_features_2 = np.load(cloud_filename_2)
+cloud_features_3 = np.load(cloud_filename_3)
+print(f"Shape of sem clouds 1 is {cloud_features.shape}")
+print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
+print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
+cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
+# --------------------------------------------------------------------
 
 # --- TEST TRAINING --------------------------------------------------
 # n_process = 200
 # cloud_features = cloud_features[0:n_process, :, :, :]
-# ----------------- --------------------------------------------------
+# --------------------------------------------------------------------
 
-sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
-cloud_features = cloud_features[:, 0:2, :, :]
-print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
+# --- DATA SPLITTING -------------------------------------------------
+# sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
+# cloud_features = cloud_features[:, 0:2, :, :]
+# print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
-# Initialize the data loaders
+# # Initialize the data loaders
+# train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
+# print(f"Total size of the training set: {len(train_set)}")
+# split = DataSplitter(train_set, False, test_train_split=1.0, val_train_split=0.05, shuffle=True)
+
+# # Split the data into train, val and optionally test
+# train_loader, val_loader, test_loader = split.get_split(
+#     batch_size=batch_size, num_workers=num_workers)
+# train_size = split.get_train_size()
+# val_size = split.get_val_size()
+# test_size = split.get_test_size()
+# --------------------------------------------------------------------
+
+# --- EXTERNAL SPLITTING ---------------------------------------------
+val_filename = f"{export_ds}/sem_clouds_val.npy"
+
+print(f"Loading clouds from {val_filename}.")
+cloud_val = np.load(val_filename)
+
+sem_val_features = np.copy(cloud_val[:, 2, :, :])
+val_features = cloud_val[:, 0:2, :, :]
+print(f"Shape clouds is {val_features.shape} and sem clouds is {sem_val_features.shape}")
+
 train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
-print(f"Total size of the training set: {len(train_set)}")
-split = DataSplitter(train_set, False, test_train_split=1.0, val_train_split=0.05, shuffle=True)
-
-# Split the data into train, val and optionally test
-train_loader, val_loader, test_loader = split.get_split(
-    batch_size=batch_size, num_workers=num_workers)
+val_set = TrainingSetLidarSeg(val_features, sem_val_features)
+split = ExternalSplitter(train_set, val_set)
+train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
 train_size = split.get_train_size()
 val_size = split.get_val_size()
-test_size = split.get_test_size()
+# --------------------------------------------------------------------
 
 
 print("Training size: ", train_size)
@@ -173,14 +206,15 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
         print('\n')
     return n_iter
-
-def save_checkpoint(net, optimizer, criterion, n_epoch):
+   
+def save_checkpoint(net, optimizer, criterion, lr, n_epoch):
     checkpoint_path = f'./checkpoints/{model_save}_{n_epoch}.pth'
     torch.save({
             'epoch': n_epoch,
             'model_state_dict': net.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': criterion,
+            'lr': lr,
             }, checkpoint_path)
     print('================================')
     print(f'Saved checkpoint to {checkpoint_path}')
@@ -249,7 +283,8 @@ for epoch in tqdm(range(n_epochs)):
     train_iter = train_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)    
     val_iter = validate_lidarseg(net, criterion, optimizer, writer, epoch, val_iter)
     writer.add_scalar('Train/lr', lr, epoch)
-    save_checkpoint(net, optimizer, criterion, epoch)
+    save_checkpoint(net, optimizer, criterion, lr, epoch)
+
 
 print("Training finished!")
 final_save_path = f'./{model_save}.pkl'
