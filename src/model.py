@@ -36,17 +36,20 @@ class Model(nn.Module):
         super().__init__()
 
         # v1
-        self.features = [2, 20, 40, 120, 180, 120, 40, 20, n_classes]
-        self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
+        #self.features = [2, 20, 40, 120, 180, 120, 40, 20, n_classes]
+        #self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
 
         # small model 5x11GB
         #self.features = [2, 20, 40, 60, 100, 60, 40, 20, n_classes]
         #self.bandwidths = [bandwidth, 50, 30, 15, 10, 8, 10, 15, 30, 50, bandwidth]
 
-        # big model 5x24GB
-#         self.features = [2, 20, 40, 60, 120, 60, 40, 20, n_classes]
-#         self.bandwidths = [bandwidth, 50, 40, 30, 20, 10, 20, 30, 40, 50, bandwidth]
+        # big model 5x24GB (batch size = 5)
+        #self.features = [2, 20, 40, 60, 120, 60, 40, 20, n_classes]
+        #self.bandwidths = [bandwidth, 60, 40, 30, 20, 10, 20, 30, 40, 60, bandwidth]
 
+        # big model 5x24GB (batch size = 10)
+        self.features = [2, 20, 40, 80, 180, 80, 40, 20, n_classes]
+        self.bandwidths = [bandwidth, 50, 40, 20, 15, 10, 15, 20, 40, 50, bandwidth]
 
         print(f'[Model] We have {self.features} features.' )
         print(f'[Model] We have {self.bandwidths} bandwidths.' )

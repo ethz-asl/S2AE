@@ -28,8 +28,8 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 2
-batch_size = 5
+n_epochs = 10
+batch_size = 10
 num_workers = 15
 n_classes = 9
 device_ids = [0, 1, 2, 3, 4]
@@ -166,6 +166,12 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         writer.add_scalar('Validation/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, epoch_p_1)
         writer.add_scalar('Validation/AvgJaccardIndex', avg_jacc.avg, epoch_p_1)
         writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)
+
+        print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy: {avg_pixel_acc.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
+        print('\n')
     return n_iter
 
 def save_checkpoint(net, optimizer, criterion, n_epoch):
