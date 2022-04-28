@@ -10,10 +10,13 @@ from torch.utils.data.sampler import SubsetRandomSampler
 class ExternalSplitter:
 
     def __init__(self, train_dataset, val_dataset):
-        self.dataset = dataset
-        self.dataset_size = len(dataset)
-        self.train_indices = list(range(self.dataset_size))
-        self.val_indices = list(range(self.dataset_size))
+        self.train_dataset = train_dataset
+        self.train_dataset_size = len(train_dataset)
+        self.val_dataset = val_dataset
+        self.val_dataset_size = len(val_dataset)
+        
+        self.train_indices = list(range(self.train_dataset_size))
+        self.val_indices = list(range(self.val_dataset_size))
 
         self.train_sampler = None
         self.val_sampler = None
@@ -21,9 +24,9 @@ class ExternalSplitter:
         self.train_loader = None
         self.val_loader = None
         
-        self.split_for_train(n_train, n_val)
+        self.split_for_train()
 
-    def split_for_train(self, n_test, n_val):
+    def split_for_train(self):
         np.random.shuffle(self.train_indices)
 
         self.train_sampler = SubsetRandomSampler(self.train_indices)
@@ -43,13 +46,13 @@ class ExternalSplitter:
     def get_train_loader(self, batch_size=50, num_workers=4):
         logging.debug('Initializing train dataloader')
         self.train_loader = torch.utils.data.DataLoader(
-            self.dataset, batch_size=batch_size, sampler=self.train_sampler, shuffle=False, num_workers=num_workers, pin_memory=True, drop_last=True)
+            self.train_dataset, batch_size=batch_size, sampler=self.train_sampler, shuffle=False, num_workers=num_workers, pin_memory=True, drop_last=True)
         return self.train_loader
 
     def get_validation_loader(self, batch_size=50, num_workers=4):
         logging.debug('Initializing validation dataloader')
         self.val_loader = torch.utils.data.DataLoader(
-            self.dataset, batch_size=batch_size, sampler=self.val_sampler, shuffle=False, num_workers=num_workers)
+            self.val_dataset, batch_size=batch_size, sampler=self.val_sampler, shuffle=False, num_workers=num_workers)
         return self.val_loader
 
     def get_train_size(self):
