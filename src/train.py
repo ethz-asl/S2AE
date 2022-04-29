@@ -29,10 +29,10 @@ print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
 n_epochs = 10
-batch_size = 10
+batch_size = 5
 num_workers = 32
 n_classes = 9
-device_ids = [0, 1, 2, 3, 4]
+device_ids = [0]
 
 print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')
@@ -60,8 +60,8 @@ print(f'Saving final model to {model_save}')
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
-# export_ds = '/media/scratch/berlukas/nuscenes'
-export_ds = '/cluster/work/riner/users/berlukas'
+export_ds = '/media/scratch/berlukas/nuscenes'
+# export_ds = '/cluster/work/riner/users/berlukas'
 
 
 # testing
@@ -78,14 +78,15 @@ cloud_features = np.load(cloud_filename)
 
 # --- DATA MERGING ---------------------------------------------------
 cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
-cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
+# cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
 
 cloud_features_2 = np.load(cloud_filename_2)
-cloud_features_3 = np.load(cloud_filename_3)
+# cloud_features_3 = np.load(cloud_filename_3)
 print(f"Shape of sem clouds 1 is {cloud_features.shape}")
 print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
-print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
-cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
+# print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
+cloud_features = np.concatenate((cloud_features, cloud_features_2))
+# cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
 # --------------------------------------------------------------------
 
 # --- TEST TRAINING --------------------------------------------------
