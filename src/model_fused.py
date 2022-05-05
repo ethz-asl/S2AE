@@ -36,7 +36,7 @@ class ImageEncoder(nn.Module):
         super().__init__()
         
         # Small Model 1x24
-        self.features = [3, 80, 150]
+        self.features = [3, 50, 150]
         self.bandwidths = [bandwidth, 20, 10]
 
 #         Big Model 5x24GB
@@ -96,7 +96,7 @@ class LidarEncoder(nn.Module):
         super().__init__()
         
         # Small Model 1x24
-        self.features = [9, 80, 150]
+        self.features = [9, 50, 150]
         self.bandwidths = [bandwidth, 20, 10]
 
 #         Big Model 5x24GB
@@ -159,7 +159,7 @@ class FusedDecoder(nn.Module):
         super().__init__()
 
 #       Small Model 1x24GB
-        self.features = [300, 50, 9]
+        self.features = [300, 50, 17]
         self.bandwidths = [10, 20, 100]
         
 #         Big Model 5x24GB
@@ -187,7 +187,7 @@ class FusedDecoder(nn.Module):
         self.unpool1 = SO3Unpooling(self.bandwidths[0], self.bandwidths[1])
         
         # Small Model 1x24GB
-        self.skip_size = 80 + 80
+        self.skip_size = 50 + 50
         
         # Big Model 5x24GB
 #         self.skip_size = 32 + 32
