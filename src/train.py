@@ -29,7 +29,7 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 10
+n_epochs = 25
 batch_size = 5
 num_workers = 32
 n_classes = 9
@@ -71,23 +71,23 @@ dec_clouds = f"{export_ds}/decoded_lidar.npy"
 dec_gt = f"{export_ds}/decoded_gt_lidar.npy"
 
 # training
-#cloud_filename = f"{export_ds}/sem_clouds.npy"
-#print(f"Loading clouds from {cloud_filename}.")
-#cloud_features = np.load(cloud_filename)
-# cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
+cloud_filename = f"{export_ds}/sem_clouds.npy"
+print(f"Loading clouds from {cloud_filename}.")
+cloud_features = np.load(cloud_filename)
+#cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
 
 
 # --- DATA MERGING ---------------------------------------------------
-cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
-cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
+#cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
+#cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
 
-cloud_features_2 = np.load(cloud_filename_2)
-cloud_features_3 = np.load(cloud_filename_3)
+#cloud_features_2 = np.load(cloud_filename_2)
+#cloud_features_3 = np.load(cloud_filename_3)
 # print(f"Shape of sem clouds 1 is {cloud_features.shape}")
-print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
-print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
+#print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
+#print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
 # cloud_features = np.concatenate((cloud_features, cloud_features_2))
-cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
+#cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
 # cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
 # --------------------------------------------------------------------
 
@@ -119,7 +119,7 @@ print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_feat
 # --------------------------------------------------------------------
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-val_filename = f"{export_ds}/sem_clouds_val.npy"
+val_filename = f"{export_ds}/sem_clouds_val_tiny.npy"
 
 print(f"Loading clouds from {val_filename}.")
 cloud_val = np.load(val_filename)
