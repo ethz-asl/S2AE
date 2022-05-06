@@ -32,23 +32,21 @@ learning_rate = 1e-3
 n_epochs = 25
 batch_size = 5
 num_workers = 32
-n_classes = 9
+n_classes = 7
 device_ids = [0]
 
 print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')
 print(f'We have a batch size of {batch_size} and {n_epochs} epochs.')
 print(f'We will use {num_workers} workers')
-# net = ModelSimpleForTesting(bandwidth=bandwidth, n_classes=n_classes).cuda()
-# net = ModelUnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
-# net = ModelSegnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
 model = Model(bandwidth=bandwidth, n_classes=n_classes).cuda(0)
 net = nn.DataParallel(model, device_ids = device_ids).to(0)
 
 #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
-criterion = MainLoss()
+# criterion = MainLoss()
+criterion = WceLovasz()
 writer = SummaryWriter()
 timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 model_save = f'test_lidarseg_{timestamp}'
@@ -65,29 +63,24 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 # export_ds = '/cluster/work/riner/users/berlukas'
 
 
-# testing
-dec_input = f"{export_ds}/decoded_input_lidar.npy"
-dec_clouds = f"{export_ds}/decoded_lidar.npy"
-dec_gt = f"{export_ds}/decoded_gt_lidar.npy"
-
 # training
-cloud_filename = f"{export_ds}/sem_clouds.npy"
-print(f"Loading clouds from {cloud_filename}.")
-cloud_features = np.load(cloud_filename)
+# cloud_filename = f"{export_ds}/sem_clouds.npy"
+# print(f"Loading clouds from {cloud_filename}.")
+# cloud_features = np.load(cloud_filename)
 #cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
 
 
 # --- DATA MERGING ---------------------------------------------------
-#cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
-#cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
+cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
+cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
 
-#cloud_features_2 = np.load(cloud_filename_2)
-#cloud_features_3 = np.load(cloud_filename_3)
+cloud_features_2 = np.load(cloud_filename_2)
+cloud_features_3 = np.load(cloud_filename_3)
 # print(f"Shape of sem clouds 1 is {cloud_features.shape}")
-#print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
-#print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
+print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
+print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
 # cloud_features = np.concatenate((cloud_features, cloud_features_2))
-#cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
+cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
 # cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
 # --------------------------------------------------------------------
 
@@ -119,7 +112,7 @@ print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_feat
 # --------------------------------------------------------------------
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-val_filename = f"{export_ds}/sem_clouds_val_tiny.npy"
+val_filename = f"{export_ds}/sem_clouds3_val_400.npy"
 
 print(f"Loading clouds from {val_filename}.")
 cloud_val = np.load(val_filename)
@@ -311,6 +304,10 @@ nvidia_smi.nvmlShutdown()
 
 # Testing
 if test_size > 0:
+    dec_input = f"{export_ds}/decoded_input_lidar.npy"
+    dec_clouds = f"{export_ds}/decoded_lidar.npy"
+    dec_gt = f"{export_ds}/decoded_gt_lidar.npy"
+
     print("Starting testing...")
     torch.cuda.empty_cache()
     input_clouds, decoded_clouds, gt_clouds = test_lidarseg(net, criterion, writer)

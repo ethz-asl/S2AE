@@ -119,14 +119,18 @@ class MainLoss(nn.Module):
 #         losses = self.alpha * nll_losses + self.beta * lz_losses + self.gamma * tv_losses
         losses = self.alpha * nll_losses + self.beta * lz_losses
         return losses
+    
+class WceLovasz(nn.Module):
+    def __init__(self, ignore = 0):
+        super().__init__()
+        self.ignore = ignore
+        self.wce = torch.nn.CrossEntropyLoss(ignore_index=self.ignore)
 
-        if size_average:
-            if batch_all:
-                return losses.sum()/(((losses > 1e-16).sum()).float()+1e-16), losses.mean()
-            else:
-                return losses.mean()
-        else:
-            return losses.sum()
+    def forward(self, decoded, teacher, size_average=True, batch_all=True):
+        wce_losses = self.wce(decoded, teacher)
+        lz_losses = lovasz_softmax(F.softmax(decoded, dim=1), teacher, ignore=self.ignore)
 
+        return wce_losses + lz_losses
+    
 if __name__ == "__main__":
     criterion = L2Loss(alpha=0.5, margin=0.2)
