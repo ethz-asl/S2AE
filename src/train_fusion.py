@@ -5,6 +5,7 @@
 
 import math
 import time
+import datetime
 
 import numpy as np
 
@@ -13,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 
 from data_splitter import DataSplitter
+from external_splitter import ExternalSplitter
 from training_set import TrainingSetFusedSeg
 from model_fused import FusedModel
 from average_meter import AverageMeter
@@ -52,9 +54,9 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 # export_ds = '/cluster/work/riner/users/berlukas'
 
 # training
-img_filename = f"{export_ds}/color_images_150_400.npy"
-cloud_filename = f"{export_ds}/sem_clouds_16_400.npy"
-sem_clouds_filename = f"{export_ds}/sem_clouds_decoded_400.npy"
+img_filename = f"{export_ds}/color_images_150.npy"
+cloud_filename = f"{export_ds}/sem_clouds_16.npy"
+sem_clouds_filename = f"{export_ds}/sem_clouds_decoded.npy"
 
 # testing
 dec_input_clouds = f"{export_ds}/decoded_fused_input_clouds.npy"
@@ -66,7 +68,7 @@ print(f"Loading from images from {img_filename}, clouds from {cloud_filename} an
 img_features = np.load(img_filename)
 print('Loaded images.')
 cloud_features = np.load(cloud_filename)
-# cloud_features = cloud_features[:, 2, :, :]
+cloud_features = cloud_features[:, 2, :, :]
 print('Loaded clouds.')
 sem_cloud_features = np.load(sem_clouds_filename)
 print('Loaded decoded.')
@@ -87,11 +89,19 @@ print(f"Loading decoded from {decoded_filename}.")
 decoded_val = np.load(decoded_filename)
 
 sem_val_features = np.copy(cloud_val[:, 2, :, :])
-val_features = cloud_val[:, 0:2, :, :]
-print(f"Shape clouds is {val_features.shape} and sem clouds is {sem_val_features.shape}")
+#val_features = cloud_val[:, 0:2, :, :]
+print(f"Shape decoded clouds is {decoded_val.shape} and gt clouds is {sem_val_features.shape} and images is {img_val.shape}")
+
+#---
+n_val = 500
+decoded_val = decoded_val[:n_val, :, :, :]
+sem_val_features = sem_val_features[:n_val, :, :]
+#val_features = val_features[:n_val, :, :, :]
+img_val = img_val[:n_val,:,:,:]
+#---
 
 train_set = TrainingSetFusedSeg(sem_cloud_features, img_features, cloud_features)
-val_set = TrainingSetFusedSeg(val_features, sem_val_features)
+val_set = TrainingSetFusedSeg(decoded_val, img_val, sem_val_features)
 split = ExternalSplitter(train_set, val_set)
 train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
 train_size = split.get_train_size()
