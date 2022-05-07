@@ -119,7 +119,7 @@ class MainLoss(nn.Module):
 #         losses = self.alpha * nll_losses + self.beta * lz_losses + self.gamma * tv_losses
         losses = self.alpha * nll_losses + self.beta * lz_losses
         return losses
-    
+
 class WceLovasz(nn.Module):
     def __init__(self, ignore = 0):
         super().__init__()
@@ -131,6 +131,6 @@ class WceLovasz(nn.Module):
         lz_losses = lovasz_softmax(F.softmax(decoded, dim=1), teacher, ignore=self.ignore)
 
         return wce_losses + lz_losses
-    
+
 if __name__ == "__main__":
     criterion = L2Loss(alpha=0.5, margin=0.2)
