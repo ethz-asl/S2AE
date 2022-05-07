@@ -183,6 +183,9 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             writer.add_scalar('Validation/Loss', loss.mean().item(), n_iter)
 
             pred_segmentation = torch.argmax(enc_dec_cloud, dim=1)
+            mask = lidarseg_gt <= 0
+            pred_segmentation[mask] = 0
+
             pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
             avg_pixel_acc.update(pixel_acc)
             avg_pixel_acc_per_class.update(pixel_acc_per_class)
@@ -234,6 +237,9 @@ def test_lidarseg(net, criterion, writer):
             enc_dec_cloud = net(cloud)
 
             pred_segmentation = torch.argmax(enc_dec_cloud, dim=1)
+            mask = lidarseg_gt <= 0
+            pred_segmentation[mask] = 0
+            
             pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
             avg_pixel_acc.update(pixel_acc)
             avg_pixel_acc_per_class.update(pixel_acc_per_class)
