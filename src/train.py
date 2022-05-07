@@ -29,8 +29,8 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 10
-batch_size = 10
+n_epochs = 25
+batch_size = 5
 num_workers = 32
 n_classes = 7
 device_ids = [0, 1, 2, 3, 4]
@@ -39,9 +39,6 @@ print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')
 print(f'We have a batch size of {batch_size} and {n_epochs} epochs.')
 print(f'We will use {num_workers} workers')
-# net = ModelSimpleForTesting(bandwidth=bandwidth, n_classes=n_classes).cuda()
-# net = ModelUnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
-# net = ModelSegnet(bandwidth=bandwidth, n_classes=n_classes).cuda()
 model = Model(bandwidth=bandwidth, n_classes=n_classes).cuda(0)
 net = nn.DataParallel(model, device_ids = device_ids).to(0)
 
@@ -49,7 +46,7 @@ net = nn.DataParallel(model, device_ids = device_ids).to(0)
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
 # criterion = MainLoss()
-criterion = WceLoss()
+criterion = WceLovasz()
 writer = SummaryWriter()
 timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 model_save = f'test_lidarseg_{timestamp}'
@@ -61,7 +58,7 @@ print(f'Saving final model to {model_save}')
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
-# export_ds = '/media/scratch/berlukas/nuscenes'
+#export_ds = '/media/scratch/berlukas/nuscenes'
 export_ds = '/cluster/work/riner/users/berlukas'
 
 
@@ -78,11 +75,12 @@ cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
 
 cloud_features_2 = np.load(cloud_filename_2)
 cloud_features_3 = np.load(cloud_filename_3)
-#print(f"Shape of sem clouds 1 is {cloud_features.shape}")
+# print(f"Shape of sem clouds 1 is {cloud_features.shape}")
 print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
 print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
-#cloud_features = np.concatenate((cloud_features, cloud_features_2))
+# cloud_features = np.concatenate((cloud_features, cloud_features_2))
 cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
+# cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
 # --------------------------------------------------------------------
 
 sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
