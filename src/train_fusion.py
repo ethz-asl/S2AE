@@ -5,6 +5,7 @@
 
 import math
 import time
+import datetime
 
 import numpy as np
 
@@ -13,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 
 from data_splitter import DataSplitter
+from external_splitter import ExternalSplitter
 from training_set import TrainingSetFusedSeg
 from model_fused import FusedModel
 from average_meter import AverageMeter
@@ -32,7 +34,7 @@ learning_rate = 1e-3
 n_epochs = 10
 batch_size = 5
 num_workers = 32
-n_classes = 9
+n_classes = 17
 
 print(f"Initializing data structures...")
 net = FusedModel(bandwidth=bandwidth, n_classes=n_classes)
@@ -41,20 +43,20 @@ optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 criterion = MainLoss()
 
 writer = SummaryWriter()
-model_save = 'fused_model.pkl'
-
+timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+model_save = f'fused_model_{timestamp}'
 print(f"All instances initialized.")
 
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
 export_ds = '/media/scratch/berlukas/nuscenes'
-export_ds = '/cluster/work/riner/users/berlukas'
+# export_ds = '/cluster/work/riner/users/berlukas'
 
 # training
-img_filename = f"{export_ds}/color_images_150_400.npy"
-cloud_filename = f"{export_ds}/sem_clouds_100_400.npy"
-sem_clouds_filename = f"{export_ds}/sem_clouds_decoded_400.npy"
+img_filename = f"{export_ds}/color_images_150.npy"
+cloud_filename = f"{export_ds}/sem_clouds_16.npy"
+sem_clouds_filename = f"{export_ds}/sem_clouds_decoded.npy"
 
 # testing
 dec_input_clouds = f"{export_ds}/decoded_fused_input_clouds.npy"
@@ -66,7 +68,7 @@ print(f"Loading from images from {img_filename}, clouds from {cloud_filename} an
 img_features = np.load(img_filename)
 print('Loaded images.')
 cloud_features = np.load(cloud_filename)
-# cloud_features = cloud_features[:, 2, :, :]
+cloud_features = cloud_features[:, 2, :, :]
 print('Loaded clouds.')
 sem_cloud_features = np.load(sem_clouds_filename)
 print('Loaded decoded.')
@@ -74,18 +76,52 @@ print('Loaded decoded.')
 print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
 
+# --- EXTERNAL SPLITTING ---------------------------------------------
+gt_val_filename = f"{export_ds}/sem_clouds_val_16.npy"
+img_filename = f"{export_ds}/color_images_val.npy"
+decoded_filename = f"{export_ds}/sem_clouds_val_decoded.npy"
 
-# Initialize the data loaders
+print(f"Loading clouds from {gt_val_filename}.")
+cloud_val = np.load(gt_val_filename)
+print(f"Loading images from {img_filename}.")
+img_val = np.load(img_filename)
+print(f"Loading decoded from {decoded_filename}.")
+decoded_val = np.load(decoded_filename)
+
+sem_val_features = np.copy(cloud_val[:, 2, :, :])
+#val_features = cloud_val[:, 0:2, :, :]
+print(f"Shape decoded clouds is {decoded_val.shape} and gt clouds is {sem_val_features.shape} and images is {img_val.shape}")
+
+#---
+n_val = 500
+decoded_val = decoded_val[:n_val, :, :, :]
+sem_val_features = sem_val_features[:n_val, :, :]
+#val_features = val_features[:n_val, :, :, :]
+img_val = img_val[:n_val,:,:,:]
+#---
+
 train_set = TrainingSetFusedSeg(sem_cloud_features, img_features, cloud_features)
-print(f"Total size of the training set: {len(train_set)}")
-split = DataSplitter(train_set, False, test_train_split=0.95, shuffle=True)
-
-# Split the data into train, val and optionally test
-train_loader, val_loader, test_loader = split.get_split(
-    batch_size=batch_size, num_workers=num_workers)
+val_set = TrainingSetFusedSeg(decoded_val, img_val, sem_val_features)
+split = ExternalSplitter(train_set, val_set)
+train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
 train_size = split.get_train_size()
 val_size = split.get_val_size()
-test_size = split.get_test_size()
+test_size = 0
+# --------------------------------------------------------------------
+
+
+
+# Initialize the data loaders
+# train_set = TrainingSetFusedSeg(sem_cloud_features, img_features, cloud_features)
+# print(f"Total size of the training set: {len(train_set)}")
+# split = DataSplitter(train_set, False, test_train_split=0.95, shuffle=True)
+
+# Split the data into train, val and optionally test
+# train_loader, val_loader, test_loader = split.get_split(
+#     batch_size=batch_size, num_workers=num_workers)
+# train_size = split.get_train_size()
+# val_size = split.get_val_size()
+# test_size = split.get_test_size()
 
 
 print("Training size: ", train_size)
@@ -111,14 +147,14 @@ def train_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_
         decoded, image, lidarseg_gt = decoded.cuda().float(), image.cuda().float(), lidarseg_gt.cuda().long()
 
         enc_fused_dec = net(decoded, image)
-        loss, loss_total = criterion(enc_fused_dec, lidarseg_gt)
+        loss = criterion(enc_fused_dec, lidarseg_gt)
         #loss_embedd = embedded_a.norm(2) + embedded_p.norm(2) + embedded_n.norm(2)
         #loss = loss_triplet + 0.001 * loss_embedd
 
         optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
-        loss_ += loss_total.item()
+        optimizer.step()        
+        loss_ += loss.mean().item()
 
         writer.add_scalar('Train/Loss', loss, n_iter)
         n_iter += 1
@@ -143,8 +179,8 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             enc_fused_dec = net(decoded, image)
 
             optimizer.zero_grad()
-            loss, loss_total = criterion(enc_fused_dec, lidarseg_gt)
-            writer.add_scalar('Validation/Loss', loss, n_iter)
+            loss = criterion(enc_fused_dec, lidarseg_gt)
+            writer.add_scalar('Validation/Loss', float(loss), n_iter)
 
             pred_segmentation = torch.argmax(enc_fused_dec, dim=1)
             pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
@@ -160,7 +196,27 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         writer.add_scalar('Validation/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, epoch_p_1)
         writer.add_scalar('Validation/AvgJaccardIndex', avg_jacc.avg, epoch_p_1)
         writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)
+    
+        print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy: {avg_pixel_acc.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
+        print('\n')
+        
     return n_iter
+
+def save_checkpoint(net, optimizer, criterion, lr, n_epoch):
+    checkpoint_path = f'./checkpoints/{model_save}_{n_epoch}.pth'
+    torch.save({
+            'epoch': n_epoch,
+            'model_state_dict': net.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': criterion,
+            'lr': lr,
+            }, checkpoint_path)
+    print('================================')
+    print(f'Saved checkpoint to {checkpoint_path}')
+    print('================================')
 
 def test_fused_lidarseg(net, criterion, writer):
     all_input_clouds = [None] * test_size
@@ -223,26 +279,26 @@ for epoch in tqdm(range(n_epochs)):
     train_iter = train_fused_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)
     val_iter = validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, val_iter)
     writer.add_scalar('Train/lr', lr, epoch)
+    save_checkpoint(net, optimizer, criterion, lr, epoch)
 
 print("Training finished!")
 torch.save(net.state_dict(), model_save)
 
 # ## Testing
+if test_size > 0:
+    print("Starting testing...")
 
+    torch.cuda.empty_cache()
+    input_clouds, input_images, decoded_clouds, gt_clouds = test_fused_lidarseg(net, criterion, writer)
 
-print("Starting testing...")
+    np.save(dec_input_clouds, input_clouds)
+    np.save(dec_input_images, input_images)
+    np.save(dec_clouds, decoded_clouds)
+    np.save(dec_gt, gt_clouds)
+    print(f'Wrote input clouds to {dec_input_clouds}.')
+    print(f'Wrote input images to {dec_input_images}.')
+    print(f'Wrote upsampled decoded clouds to {dec_clouds}')
+    print(f'Wrote upsampled gt clouds to {dec_gt}')
 
-torch.cuda.empty_cache()
-input_clouds, input_images, decoded_clouds, gt_clouds = test_fused_lidarseg(net, criterion, writer)
-
-np.save(dec_input_clouds, input_clouds)
-np.save(dec_input_images, input_images)
-np.save(dec_clouds, decoded_clouds)
-np.save(dec_gt, gt_clouds)
-print(f'Wrote input clouds to {dec_input_clouds}.')
-print(f'Wrote input images to {dec_input_images}.')
-print(f'Wrote upsampled decoded clouds to {dec_clouds}')
-print(f'Wrote upsampled gt clouds to {dec_gt}')
-
-writer.close()
-print("Testing finished!")
+    writer.close()
+    print("Testing finished!")
