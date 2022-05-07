@@ -130,7 +130,7 @@ class Model(nn.Module):
         self.max_pool3 = SO3Pooling(self.bandwidths[3], self.bandwidths[4])
         
         self.conv4 = nn.Sequential(
-            nn.Dropout(p=0.1),
+            nn.Dropout(p=0.5),
             SO3Convolution(
                 nfeature_in  = self.features[3],
                 nfeature_out = self.features[4],
@@ -155,7 +155,6 @@ class Model(nn.Module):
         
         
         self.deconv1 = nn.Sequential(
-            nn.Dropout(p=0.1),
             SO3Convolution(
                 nfeature_in  = self.features[4],
                 nfeature_out = self.features[4],
