@@ -125,7 +125,6 @@ class Model(nn.Module):
                 grid=grid_so3_3),
             nn.BatchNorm3d(self.features[3], affine=True),
             nn.PReLU(),
-            nn.Dropout(p=0.4),
         )
         
         self.max_pool3 = SO3Pooling(self.bandwidths[3], self.bandwidths[4])
@@ -149,7 +148,7 @@ class Model(nn.Module):
                 grid=grid_so3_4),
             nn.BatchNorm3d(self.features[4], affine=True),
             nn.PReLU(),
-            nn.Dropout(p=0.4)
+            nn.Dropout(p=0.3)
         )
         
         # -------------------------------------------------------------------------------

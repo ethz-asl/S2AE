@@ -11,12 +11,14 @@ import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 import nvidia_smi
+from functools import partial
 
 from data_splitter import DataSplitter
 from external_splitter import ExternalSplitter
 from training_set import TrainingSetLidarSeg
 from model import Model
 from average_meter import AverageMeter
+from scheduler import *
 
 from metrics import *
 from loss import *
@@ -28,7 +30,7 @@ torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 100
-learning_rate = 1e-3
+learning_rate = 2.4e-2
 n_epochs = 25
 batch_size = 5
 num_workers = 32
@@ -43,7 +45,14 @@ model = Model(bandwidth=bandwidth, n_classes=n_classes).cuda(0)
 net = nn.DataParallel(model, device_ids = device_ids).to(0)
 
 #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
-optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+#optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+optimizer = torch.optim.SGD(net.parameters(),
+                            lr=learning_rate,
+                            momentum=0.9,
+                            weight_decay=1.0e-4,
+                            nesterov=True)
+
+
 
 # criterion = MainLoss()
 criterion = WceLovasz()
@@ -74,13 +83,16 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
 cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
 
-cloud_features_2 = np.load(cloud_filename_2)
-cloud_features_3 = np.load(cloud_filename_3)
+# cloud_features_2 = np.load(cloud_filename_2)
+# cloud_features_3 = np.load(cloud_filename_3)
+cloud_features = np.load(cloud_filename_3)
+
+
 # print(f"Shape of sem clouds 1 is {cloud_features.shape}")
-print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
-print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
+# print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
+# print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
 # cloud_features = np.concatenate((cloud_features, cloud_features_2))
-cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
+# cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
 # cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
 # --------------------------------------------------------------------
 
@@ -139,6 +151,16 @@ else:
     print("Testing size: ", test_size)
 
 
+# scheduler = torch.optim.lr_scheduler.LambdaLR(
+#                 optimizer,
+#                 lr_lambda=partial(cosine_schedule_with_warmup,
+#                 num_epochs=n_epoch,
+#                 batch_size=batch_size,
+#                 dataset_size=train_size))
+
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=n_epochs)
+
 def adjust_learning_rate_exp(optimizer, epoch_num, lr):
     decay_rate = 0.96
     new_lr = lr * math.pow(decay_rate, epoch_num)
@@ -165,8 +187,8 @@ def train_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_, t0):
 
         if batch_idx % 100 == 99:
             t1 = time.time()
-            print('[Epoch %d, Batch %4d] loss: %.8f time: %.5f lr: %.3e' %
-                  (epoch + 1, batch_idx + 1, loss_ / 100, (t1 - t0) / 60, lr))
+            print('[Epoch %d, Batch %4d] loss: %.8f time: %.5f' %
+                  (epoch + 1, batch_idx + 1, loss_ / 100, (t1 - t0) / 60))
             t0 = t1
             loss_ = 0.0
     return n_iter
@@ -211,14 +233,14 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         print('\n')
     return n_iter
    
-def save_checkpoint(net, optimizer, criterion, lr, n_epoch):
+def save_checkpoint(net, optimizer, criterion, scheduler, n_epoch):
     checkpoint_path = f'./checkpoints/{model_save}_{n_epoch}.pth'
     torch.save({
             'epoch': n_epoch,
             'model_state_dict': net.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': criterion,
-            'lr': lr,
+            'scheduler': scheduler.state_dict(),
             }, checkpoint_path)
     print('================================')
     print(f'Saved checkpoint to {checkpoint_path}')
@@ -284,13 +306,17 @@ val_iter = 0
 loss_ = 0.0
 print(f'Starting training using {n_epochs} epochs')
 for epoch in tqdm(range(n_epochs)):    
-    lr = adjust_learning_rate_exp(optimizer, epoch_num=epoch, lr=learning_rate)
+    # lr = adjust_learning_rate_exp(optimizer, epoch_num=epoch, lr=learning_rate)
     t0 = time.time()
 
     train_iter = train_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)    
+    scheduler.step()
+    
     val_iter = validate_lidarseg(net, criterion, optimizer, writer, epoch, val_iter)
+    
+    lr = optimizer.param_groups[0]["lr"]
     writer.add_scalar('Train/lr', lr, epoch)
-    save_checkpoint(net, optimizer, criterion, lr, epoch)
+    save_checkpoint(net, optimizer, criterion, scheduler, epoch)
 
 
 print("Training finished!")
