@@ -30,7 +30,7 @@ print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
 n_epochs = 25
-batch_size = 5
+batch_size = 10
 num_workers = 32
 n_classes = 7
 device_ids = [0, 1, 2, 3, 4]
@@ -75,6 +75,7 @@ cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
 
 cloud_features_2 = np.load(cloud_filename_2)
 cloud_features_3 = np.load(cloud_filename_3)
+
 # print(f"Shape of sem clouds 1 is {cloud_features.shape}")
 print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
 print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
