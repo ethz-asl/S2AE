@@ -125,12 +125,12 @@ class Model(nn.Module):
                 grid=grid_so3_3),
             nn.BatchNorm3d(self.features[3], affine=True),
             nn.PReLU(),
+            nn.Dropout(p=0.4),
         )
         
         self.max_pool3 = SO3Pooling(self.bandwidths[3], self.bandwidths[4])
         
         self.conv4 = nn.Sequential(
-            nn.Dropout(p=0.2),
             SO3Convolution(
                 nfeature_in  = self.features[3],
                 nfeature_out = self.features[4],
@@ -149,13 +149,13 @@ class Model(nn.Module):
                 grid=grid_so3_4),
             nn.BatchNorm3d(self.features[4], affine=True),
             nn.PReLU(),
+            nn.Dropout(p=0.4),
         )
         
         # -------------------------------------------------------------------------------
         
         
         self.deconv1 = nn.Sequential(
-            nn.Dropout(p=0.2),
             SO3Convolution(
                 nfeature_in  = self.features[4],
                 nfeature_out = self.features[4],

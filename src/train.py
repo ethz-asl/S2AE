@@ -73,9 +73,9 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 
 
 # training
-# cloud_filename = f"{export_ds}/sem_clouds.npy"
-# print(f"Loading clouds from {cloud_filename}.")
-# cloud_features = np.load(cloud_filename)
+cloud_filename = f"{export_ds}/sem_clouds1.npy"
+print(f"Loading clouds from {cloud_filename}.")
+cloud_features = np.load(cloud_filename)
 #cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
 
 
@@ -83,17 +83,17 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
 cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
 
-# cloud_features_2 = np.load(cloud_filename_2)
-# cloud_features_3 = np.load(cloud_filename_3)
-cloud_features = np.load(cloud_filename_3)
+cloud_features_2 = np.load(cloud_filename_2)
+cloud_features_3 = np.load(cloud_filename_3)
+#cloud_features = np.load(cloud_filename_3)
 
 
-# print(f"Shape of sem clouds 1 is {cloud_features.shape}")
-# print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
-# print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
+print(f"Shape of sem clouds 1 is {cloud_features.shape}")
+print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
+print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
 # cloud_features = np.concatenate((cloud_features, cloud_features_2))
 # cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
-# cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
+cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
 # --------------------------------------------------------------------
 
 sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
@@ -230,6 +230,7 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         writer.add_scalar('Validation/AvgJaccardIndex', avg_jacc.avg, epoch_p_1)
         writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)
 
+        print('\n')
         print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy: {avg_pixel_acc.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
@@ -246,6 +247,7 @@ def save_checkpoint(net, optimizer, criterion, scheduler, n_epoch):
             'loss': criterion,
             'scheduler': scheduler.state_dict(),
             }, checkpoint_path)
+    print('\n')
     print('================================')
     print(f'Saved checkpoint to {checkpoint_path}')
     print('================================')
@@ -294,6 +296,7 @@ def test_lidarseg(net, criterion, writer):
         writer.add_scalar('Test/AvgJaccardIndex', avg_jacc.avg, n_iter)
         writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)
 
+        print('\n')
         print(f'Average Pixel Accuracy: {avg_pixel_acc.avg}')
         print(f'Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
         print(f'Average Jaccard Index: {avg_jacc.avg}')
