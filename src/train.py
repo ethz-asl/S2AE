@@ -30,7 +30,7 @@ torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 100
-learning_rate = 1.0e-2
+learning_rate = 2.4e-3
 n_epochs = 20
 batch_size = 5
 num_workers = 32
@@ -158,11 +158,11 @@ else:
 #                 batch_size=batch_size,
 #                 dataset_size=train_size))
 
-# scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-#                 optimizer, T_max=n_epochs)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                 optimizer, T_max=n_epochs)
 
-scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-                optimizer, T_0=2 * train_size, T_mult=2)
+#scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+#                optimizer, T_0=2 * train_size, T_mult=2)
 
 def adjust_learning_rate_exp(optimizer, epoch_num, lr):
     decay_rate = 0.96
@@ -188,7 +188,7 @@ def train_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_, t0):
         writer.add_scalar('Train/Loss', loss, n_iter)
         n_iter += 1
 
-        scheduler.step(epoch + batch_idx / train_size)
+        #scheduler.step(epoch + batch_idx / train_size)
         if batch_idx % 100 == 99:
             t1 = time.time()
             print('[Epoch %d, Batch %4d] loss: %.8f time: %.5f' %
@@ -314,7 +314,7 @@ for epoch in tqdm(range(n_epochs)):
     t0 = time.time()
 
     train_iter = train_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)    
-#     scheduler.step()
+    scheduler.step()
     
     val_iter = validate_lidarseg(net, criterion, optimizer, writer, epoch, val_iter)
     
