@@ -39,8 +39,16 @@ n_classes = 17
 print(f"Initializing data structures...")
 net = FusedModel(bandwidth=bandwidth, n_classes=n_classes)
 
-optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
-criterion = MainLoss()
+# optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+# criterion = MainLoss()
+
+optimizer = torch.optim.SGD(net.parameters(),
+                            lr=learning_rate,
+                            momentum=0.9,
+                            weight_decay=1.0e-4,
+                            nesterov=True)
+criterion = WceLovasz()
+
 
 writer = SummaryWriter()
 timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
@@ -55,53 +63,45 @@ export_ds = '/media/scratch/berlukas/nuscenes'
 
 # training
 img_filename = f"{export_ds}/color_images_150.npy"
-cloud_filename = f"{export_ds}/sem_clouds_16.npy"
-sem_clouds_filename = f"{export_ds}/sem_clouds_decoded.npy"
+sem_clouds_filename = f"{export_ds}/sem_clouds1.npy"
+decoded_clouds_filename = f"{export_ds}/decoded/sem_clouds1_decoded.npy"
 
-# testing
-dec_input_clouds = f"{export_ds}/decoded_fused_input_clouds.npy"
-dec_input_images = f"{export_ds}/decoded_fused_input_images.npy"
-dec_clouds = f"{export_ds}/decoded_fused.npy"
-dec_gt = f"{export_ds}/decoded_fused_gt.npy"
+gt_filename = f"{export_ds}/sem_clouds_16.npy"
 
-print(f"Loading from images from {img_filename}, clouds from {cloud_filename} and sem clouds from {sem_clouds_filename}")
+print(f"Loading from images from {img_filename}, clouds from {gt_filename} and sem clouds from {sem_clouds_filename}")
 img_features = np.load(img_filename)
 print('Loaded images.')
-cloud_features = np.load(cloud_filename)
-cloud_features = cloud_features[:, 2, :, :]
-print('Loaded clouds.')
+gt_features = np.load(gt_filename)
+print('Loaded gt.')
 sem_cloud_features = np.load(sem_clouds_filename)
+print('Loaded sem clouds.')
+decoded_cloud_features = np.load(decoded_clouds_filename)
 print('Loaded decoded.')
 
-print(f"Shape of images is {img_features.shape}, clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
-
+sem_cloud_features = sem_cloud_features[:,0:2,:,:]
+sem_cloud_features = np.concatenate((sem_cloud_features, decoded_cloud_features), axis=1)
+gt_features = gt_features[:, 2, :, :]
+print(f"Shape of input is: sem clouds ({sem_cloud_features.shape}), decoded clouds ({decoded_cloud_features.shape}) and imgs ({img_features.shape})")
+print(f"Shape of gt is {gt_features.shape}")
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-gt_val_filename = f"{export_ds}/sem_clouds_val_16.npy"
-img_filename = f"{export_ds}/color_images_val.npy"
-decoded_filename = f"{export_ds}/sem_clouds_val_decoded.npy"
+gt_val_filename = f"{export_ds}/val/sem_clouds_val_16_tiny.npy"
+img_filename = f"{export_ds}/val/color_images_val_tiny.npy"
+decoded_filename = f"{export_ds}/val/decoded_val_tiny.npy"
 
 print(f"Loading clouds from {gt_val_filename}.")
-cloud_val = np.load(gt_val_filename)
+gt_val = np.load(gt_val_filename)
 print(f"Loading images from {img_filename}.")
 img_val = np.load(img_filename)
 print(f"Loading decoded from {decoded_filename}.")
 decoded_val = np.load(decoded_filename)
 
-sem_val_features = np.copy(cloud_val[:, 2, :, :])
+#sem_val_features = np.copy(cloud_val[:, 2, :, :])
 #val_features = cloud_val[:, 0:2, :, :]
-print(f"Shape decoded clouds is {decoded_val.shape} and gt clouds is {sem_val_features.shape} and images is {img_val.shape}")
+print(f"[Validation] Shape decoded clouds is {decoded_val.shape} and gt clouds is {gt_val.shape} and images is {img_val.shape}")
 
-#---
-n_val = 500
-decoded_val = decoded_val[:n_val, :, :, :]
-sem_val_features = sem_val_features[:n_val, :, :]
-#val_features = val_features[:n_val, :, :, :]
-img_val = img_val[:n_val,:,:,:]
-#---
-
-train_set = TrainingSetFusedSeg(sem_cloud_features, img_features, cloud_features)
-val_set = TrainingSetFusedSeg(decoded_val, img_val, sem_val_features)
+train_set = TrainingSetFusedSeg(sem_cloud_features, img_features, gt_features)
+val_set = TrainingSetFusedSeg(decoded_val, img_val, gt_val)
 split = ExternalSplitter(train_set, val_set)
 train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
 train_size = split.get_train_size()
@@ -130,7 +130,6 @@ if test_size == 0:
     print('Test size is 0. Configured for external tests')
 else:
     print("Testing size: ", test_size)
-
 
 
 def adjust_learning_rate_exp(optimizer, epoch_num, lr):
@@ -183,6 +182,9 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             writer.add_scalar('Validation/Loss', float(loss), n_iter)
 
             pred_segmentation = torch.argmax(enc_fused_dec, dim=1)
+            mask = lidarseg_gt <= 0
+            pred_segmentation[mask] = 0
+            
             pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
             avg_pixel_acc.update(pixel_acc)
             avg_pixel_acc_per_class.update(pixel_acc_per_class)
@@ -236,6 +238,10 @@ def test_fused_lidarseg(net, criterion, writer):
             enc_fused_dec = net(decoded, image)
 
             pred_segmentation = torch.argmax(enc_fused_dec, dim=1)
+            mask = lidarseg_gt <= 0
+            pred_segmentation[mask] = 0
+            
+            
             pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
             avg_pixel_acc.update(pixel_acc)
             avg_pixel_acc_per_class.update(pixel_acc_per_class)
@@ -290,6 +296,12 @@ if test_size > 0:
 
     torch.cuda.empty_cache()
     input_clouds, input_images, decoded_clouds, gt_clouds = test_fused_lidarseg(net, criterion, writer)
+    
+    # testing
+    dec_input_clouds = f"{export_ds}/decoded_fused_input_clouds.npy"
+    dec_input_images = f"{export_ds}/decoded_fused_input_images.npy"
+    dec_clouds = f"{export_ds}/decoded_fused.npy"
+    dec_gt = f"{export_ds}/decoded_fused_gt.npy"
 
     np.save(dec_input_clouds, input_clouds)
     np.save(dec_input_images, input_images)
