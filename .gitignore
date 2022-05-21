@@ -140,5 +140,6 @@ dmypy.json
 # matlab
 *.asv
 
-# euler
+# temp files
 lsf.*
+test_fusion_*
