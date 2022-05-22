@@ -113,11 +113,13 @@ def test_lidarseg(net, criterion, writer):
                 k = k + 1     
             n_iter += 1
             
-        writer.add_scalar('Test/AvgPixelAccuracy', avg_pixel_acc.avg, n_iter)   
-        writer.add_scalar('Test/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, n_iter)   
-        writer.add_scalar('Test/AvgJaccardIndex', avg_jacc.avg, n_iter)
-        writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)  
-
+            print('\n')
+            print(f'[Test] Average Pixel Accuracy: {avg_pixel_acc.avg}')
+            print(f'[Test] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
+            print(f'[Test] Average Jaccard Index: {avg_jacc.avg}')
+            print(f'[Test] Average DICE Coefficient: {avg_dice.avg}')
+            print('\n')
+            
     return np.array(all_decoded_clouds), np.array(all_gt_clouds)
 
 
