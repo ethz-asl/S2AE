@@ -6,6 +6,7 @@
 import math
 import time
 import datetime
+import os
 
 import numpy as np
 
@@ -30,11 +31,11 @@ torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 100
-learning_rate = 1e-3
-n_epochs = 10
+learning_rate = 0.998
+n_epochs = 20
 batch_size = 5
 num_workers = 32
-n_classes = 17
+n_classes = 7
 
 print(f"Initializing data structures...")
 net = FusedModel(bandwidth=bandwidth, n_classes=n_classes)
@@ -59,33 +60,54 @@ print(f"All instances initialized.")
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
 export_ds = '/media/scratch/berlukas/nuscenes'
+log_ds = f'{export_ds}/log_{timestamp}'
 # export_ds = '/cluster/work/riner/users/berlukas'
+
+mode = 0o666
+os.mkdir(log_ds, mode)
 
 # training
 img_filename = f"{export_ds}/color_images_150.npy"
+img_filename_2 = f"{export_ds}/color_images_150.npy"
 sem_clouds_filename = f"{export_ds}/sem_clouds1.npy"
+sem_clouds_filename_2 = f"{export_ds}/sem_clouds2.npy"
 decoded_clouds_filename = f"{export_ds}/decoded/sem_clouds1_decoded.npy"
+decoded_clouds_filename_2 = f"{export_ds}/decoded/sem_clouds2_decoded.npy"
 
-gt_filename = f"{export_ds}/sem_clouds_16.npy"
+# 16 classes mode
+#gt_filename = f"{export_ds}/sem_clouds_16.npy"
+#gt_filename = f"{export_ds}/sem_clouds_16.npy"
+#gt_features = np.load(gt_filename)
+#print('Loaded gt.')
+#gt_features = gt_features[:, 2, :, :]
+#print(f"Loading from images from {img_filename}, clouds from {gt_filename} and sem clouds from {sem_clouds_filename}")
+# -------------------------------------------------
 
-print(f"Loading from images from {img_filename}, clouds from {gt_filename} and sem clouds from {sem_clouds_filename}")
+def load_lidar_input(sem_clouds_filename, decoded_clouds_filename):
+    sem_cloud_features = np.load(sem_clouds_filename)
+    print('Loaded sem clouds.')
+    decoded_cloud_features = np.load(decoded_clouds_filename)
+    print('Loaded decoded.')
+    gt_features = np.copy(sem_cloud_features[:, 2, :, :])
+    sem_cloud_features = sem_cloud_features[:,0:2,:,:]
+    sem_cloud_features = np.concatenate((sem_cloud_features, decoded_cloud_features), axis=1)
+    return sem_cloud_features, gt_features
+
 img_features = np.load(img_filename)
+#img_features_2 = np.load(img_filename_2)
+#img_features = np.concatenate((img_features, img_features_2))
 print('Loaded images.')
-gt_features = np.load(gt_filename)
-print('Loaded gt.')
-sem_cloud_features = np.load(sem_clouds_filename)
-print('Loaded sem clouds.')
-decoded_cloud_features = np.load(decoded_clouds_filename)
-print('Loaded decoded.')
 
-sem_cloud_features = sem_cloud_features[:,0:2,:,:]
-sem_cloud_features = np.concatenate((sem_cloud_features, decoded_cloud_features), axis=1)
-gt_features = gt_features[:, 2, :, :]
-print(f"Shape of input is: sem clouds ({sem_cloud_features.shape}), decoded clouds ({decoded_cloud_features.shape}) and imgs ({img_features.shape})")
+sem_cloud_features, gt_features = load_lidar_input(sem_clouds_filename, decoded_clouds_filename)
+#sem_cloud_features_2 = load_lidar_input(sem_clouds_filename_2, decoded_clouds_filename_2)
+#sem_cloud_features = np.concatenate((sem_cloud_features, sem_cloud_features_2))
+
+print(f"Shape of input is: sem clouds ({sem_cloud_features.shape}) and imgs ({img_features.shape})")
 print(f"Shape of gt is {gt_features.shape}")
 
-# --- EXTERNAL SPLITTING ---------------------------------------------
-gt_val_filename = f"{export_ds}/val/sem_clouds_val_16_tiny.npy"
+# --- EXTERNAL SPLITTING --------------------------------------------
+#gt_val_filename = f"{export_ds}/val/sem_clouds_val_16_tiny.npy"
+gt_val_filename = f"{export_ds}/val/sem_clouds_val_400.npy"
 img_filename = f"{export_ds}/val/color_images_val_tiny.npy"
 decoded_filename = f"{export_ds}/val/decoded_val_tiny.npy"
 
@@ -96,12 +118,14 @@ img_val = np.load(img_filename)
 print(f"Loading decoded from {decoded_filename}.")
 decoded_val = np.load(decoded_filename)
 
-#sem_val_features = np.copy(cloud_val[:, 2, :, :])
-#val_features = cloud_val[:, 0:2, :, :]
-print(f"[Validation] Shape decoded clouds is {decoded_val.shape} and gt clouds is {gt_val.shape} and images is {img_val.shape}")
+gt_val_features = np.copy(gt_val[:, 2, :, :])
+sem_val_features = gt_val[:,0:2,:,:]
+sem_val_features = np.concatenate((sem_val_features, decoded_val), axis=1)
+print(f"Shape decoded clouds is {sem_val_features.shape} and gt clouds is {gt_val_features.shape} and images is {img_val.shape}")
+
 
 train_set = TrainingSetFusedSeg(sem_cloud_features, img_features, gt_features)
-val_set = TrainingSetFusedSeg(decoded_val, img_val, gt_val)
+val_set = TrainingSetFusedSeg(sem_val_features, img_val, gt_val_features)
 split = ExternalSplitter(train_set, val_set)
 train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
 train_size = split.get_train_size()
@@ -171,6 +195,7 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     avg_pixel_acc_per_class = AverageMeter()
     avg_jacc = AverageMeter()
     avg_dice = AverageMeter()
+    last_segmentation = None
     net.eval()
     with torch.no_grad():
         for batch_idx, (decoded, image, lidarseg_gt) in enumerate(val_loader):
@@ -190,6 +215,9 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             avg_pixel_acc_per_class.update(pixel_acc_per_class)
             avg_jacc.update(jacc)
             avg_dice.update(dice)
+            
+            idx_last = enc_fused_dec.shape[0] - 1
+            last_segmentation = pred_segmentation.cpu().data.numpy()[idx_last,:,:,:]
 
             n_iter += 1
 
@@ -203,6 +231,9 @@ def validate_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
+        
+        np.save(f'{log_ds}/seg-epoch-{epoch_p_1}.npy', last_segmentation)
+        
         print('\n')
         
     return n_iter

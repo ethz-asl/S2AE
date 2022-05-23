@@ -36,7 +36,7 @@ class ImageEncoder(nn.Module):
         super().__init__()
         
         # Small Model 1x24
-        self.features = [3, 20, 50]
+        self.features = [3, 20, 40]
         self.bandwidths = [bandwidth, 30, 20]
 
 #         Big Model 5x24GB
@@ -108,7 +108,7 @@ class LidarEncoder(nn.Module):
         super().__init__()
         
         # Small Model 1x24
-        self.features = [9, 20, 50]
+        self.features = [9, 20, 40]
         self.bandwidths = [bandwidth, 30, 20]
 
 #         Big Model 5x24GB
@@ -181,7 +181,7 @@ class FusedDecoder(nn.Module):
         super().__init__()
 
 #       Small Model 1x24GB
-        self.features = [100, 20, 17]
+        self.features = [80, 20, 7]
         self.bandwidths = [20, 30, 100]
         
 #         Big Model 5x24GB
