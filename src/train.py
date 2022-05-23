@@ -3,6 +3,7 @@
 import math
 import time
 import datetime
+import os
 
 import numpy as np
 
@@ -16,7 +17,7 @@ from functools import partial
 from data_splitter import DataSplitter
 from external_splitter import ExternalSplitter
 from training_set import TrainingSetLidarSeg
-from model import Model
+from model_prior import Model
 from average_meter import AverageMeter
 from scheduler import *
 
@@ -30,11 +31,11 @@ torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 100
-learning_rate = 2.4e-3
+learning_rate = 1.4e-3
 n_epochs = 20
 batch_size = 5
 num_workers = 32
-n_classes = 7
+n_classes = 17
 device_ids = [0]
 
 print(f"Initializing data structures...")
@@ -70,6 +71,10 @@ print(f'Saving final model to {model_save}')
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
 export_ds = '/media/scratch/berlukas/nuscenes'
 # export_ds = '/cluster/work/riner/users/berlukas'
+log_ds = f'{export_ds}/runs/log_{timestamp}'
+mode = 0o777
+os.mkdir(log_ds, mode)
+
 
 
 # training
@@ -124,7 +129,7 @@ print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_feat
 # --------------------------------------------------------------------
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-val_filename = f"{export_ds}/val/sem_clouds_val_400.npy"
+val_filename = f"{export_ds}/val/sem_clouds_val_16_tiny.npy"
 
 print(f"Loading clouds from {val_filename}.")
 cloud_val = np.load(val_filename)
@@ -202,6 +207,7 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     avg_pixel_acc_per_class = AverageMeter()
     avg_jacc = AverageMeter()
     avg_dice = AverageMeter()
+    last_segmentation = np.array([])
     net.eval()
     with torch.no_grad():
         for batch_idx, (cloud, lidarseg_gt) in enumerate(val_loader):
@@ -221,6 +227,9 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             avg_pixel_acc_per_class.update(pixel_acc_per_class)
             avg_jacc.update(jacc)
             avg_dice.update(dice)
+            
+            last_index = enc_dec_cloud.shape[0] - 1
+            last_segmentation = pred_segmentation.cpu().data.numpy()[last_index,:,:]
 
             n_iter += 1
 
@@ -236,6 +245,13 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
         print('\n')
+        
+        batch_log_filename = f'{log_ds}/seg_epoch-{epoch_p_1}.npy' 
+        np.save(batch_log_filename, last_segmentation)
+        print(f'Wrote batch log to {batch_log_filename}.')
+        print('\n')
+        
+        
     return n_iter
    
 def save_checkpoint(net, optimizer, criterion, scheduler, n_epoch):

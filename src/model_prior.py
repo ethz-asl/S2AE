@@ -36,7 +36,7 @@ class Model(nn.Module):
         super().__init__()
 
         # v1
-        self.features = [9, 20, 45, 100, 180, 100, 45, 20, n_classes]
+        self.features = [2, 20, 45, 100, 180, 100, 45, 20, n_classes]
         self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
 
         # small model 5x11GB
