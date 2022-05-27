@@ -36,8 +36,8 @@ class Model(nn.Module):
         super().__init__()
 
         # v1
-        self.features = [2, 20, 45, 140, 180, 140, 45, 20, n_classes]
-        self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
+        self.features = [9, 20, 25, 30, 25, 20, n_classes]
+        self.bandwidths = [bandwidth, 30, 20, 10, 5, 10, 20, 30, bandwidth]
 
         # small model 5x11GB
         #self.features = [2, 20, 40, 60, 100, 60, 40, 20, n_classes]
@@ -125,31 +125,7 @@ class Model(nn.Module):
                 grid=grid_so3_3),
             nn.BatchNorm3d(self.features[3], affine=True),
             nn.PReLU(),
-            nn.Dropout(p=0.4),
-        )
-        
-        self.max_pool3 = SO3Pooling(self.bandwidths[3], self.bandwidths[4])
-        
-        self.conv4 = nn.Sequential(
-            SO3Convolution(
-                nfeature_in  = self.features[3],
-                nfeature_out = self.features[4],
-                b_in  = self.bandwidths[4],
-                b_out = self.bandwidths[4],
-                b_inverse = self.bandwidths[4],
-                grid=grid_so3_4),
-            nn.BatchNorm3d(self.features[4], affine=True),
-            nn.PReLU(),
-            SO3Convolution(
-                nfeature_in  = self.features[4],
-                nfeature_out = self.features[4],
-                b_in  = self.bandwidths[4],
-                b_out = self.bandwidths[4],
-                b_inverse = self.bandwidths[4],
-                grid=grid_so3_4),
-            nn.BatchNorm3d(self.features[4], affine=True),
-            nn.PReLU(),
-            nn.Dropout(p=0.4),
+            nn.Dropout(p=0.3),
         )
         
         # -------------------------------------------------------------------------------
@@ -157,12 +133,35 @@ class Model(nn.Module):
         
         self.deconv1 = nn.Sequential(
             SO3Convolution(
-                nfeature_in  = self.features[4],
+                nfeature_in  = self.features[3],
+                nfeature_out = self.features[3],
+                b_in  = self.bandwidths[5],
+                b_out = self.bandwidths[5],
+                b_inverse = self.bandwidths[5],
+                grid=grid_so3_3),
+            nn.BatchNorm3d(self.features[3], affine=True),
+            nn.PReLU(),
+            SO3Convolution(
+                nfeature_in  = self.features[3],
+                nfeature_out = self.features[4],
+                b_in  = self.bandwidths[5],
+                b_out = self.bandwidths[5],
+                b_inverse = self.bandwidths[5],
+                grid=grid_so3_3),
+            nn.BatchNorm3d(self.features[4], affine=True),
+            nn.PReLU()
+        )
+        
+        self.unpool2 = SO3Unpooling(self.bandwidths[5], self.bandwidths[6]) # 10 to 15 bw
+        
+        self.deconv2 = nn.Sequential(
+            SO3Convolution(
+                nfeature_in  = self.features[4] + self.features[2],
                 nfeature_out = self.features[4],
                 b_in  = self.bandwidths[6],
                 b_out = self.bandwidths[6],
                 b_inverse = self.bandwidths[6],
-                grid=grid_so3_4),
+                grid=grid_so3_2),
             nn.BatchNorm3d(self.features[4], affine=True),
             nn.PReLU(),
             SO3Convolution(
@@ -171,21 +170,21 @@ class Model(nn.Module):
                 b_in  = self.bandwidths[6],
                 b_out = self.bandwidths[6],
                 b_inverse = self.bandwidths[6],
-                grid=grid_so3_4),
+                grid=grid_so3_2),
             nn.BatchNorm3d(self.features[5], affine=True),
             nn.PReLU()
         )
         
-        self.unpool2 = SO3Unpooling(self.bandwidths[6], self.bandwidths[7]) # 10 to 15 bw
+        self.unpool3 = SO3Unpooling(self.bandwidths[6], self.bandwidths[7])
         
-        self.deconv2 = nn.Sequential(
+        self.deconv3 = nn.Sequential(
             SO3Convolution(
-                nfeature_in  = self.features[5] + self.features[3],
+                nfeature_in  = self.features[5] + self.features[1],
                 nfeature_out = self.features[5],
                 b_in  = self.bandwidths[7],
                 b_out = self.bandwidths[7],
                 b_inverse = self.bandwidths[7],
-                grid=grid_so3_3),
+                grid=grid_so3_1),
             nn.BatchNorm3d(self.features[5], affine=True),
             nn.PReLU(),
             SO3Convolution(
@@ -193,80 +192,27 @@ class Model(nn.Module):
                 nfeature_out = self.features[6],
                 b_in  = self.bandwidths[7],
                 b_out = self.bandwidths[7],
-                b_inverse = self.bandwidths[7],
-                grid=grid_so3_3),
+                b_inverse = self.bandwidths[8],
+                grid=grid_so3_1),
             nn.BatchNorm3d(self.features[6], affine=True),
             nn.PReLU()
         )
         
-        self.unpool3 = SO3Unpooling(self.bandwidths[7], self.bandwidths[8])
-        
-        self.deconv3 = nn.Sequential(
-            SO3Convolution(
-                nfeature_in  = self.features[6] + self.features[2],
-                nfeature_out = self.features[6],
-                b_in  = self.bandwidths[8],
-                b_out = self.bandwidths[8],
-                b_inverse = self.bandwidths[8],
-                grid=grid_so3_2),
-            nn.BatchNorm3d(self.features[6], affine=True),
-            nn.PReLU(),
-            SO3Convolution(
-                nfeature_in  = self.features[6],
-                nfeature_out = self.features[7],
-                b_in  = self.bandwidths[8],
-                b_out = self.bandwidths[8],
-                b_inverse = self.bandwidths[8],
-                grid=grid_so3_2),
-            nn.BatchNorm3d(self.features[7], affine=True),
-            nn.PReLU()
-        )
-        
-        self.unpool4 = SO3Unpooling(self.bandwidths[8], self.bandwidths[9])
-        
-        self.deconv4 = nn.Sequential(
-            SO3Convolution(
-                nfeature_in  = self.features[7] + self.features[1],
-                nfeature_out = self.features[7],
-                b_in  = self.bandwidths[9],
-                b_out = self.bandwidths[9],
-                b_inverse = self.bandwidths[9],
-                grid=grid_so3_1),
-            nn.BatchNorm3d(self.features[7], affine=True),
-            nn.PReLU(),
-            SO3Convolution(
-                nfeature_in  = self.features[7],
-                nfeature_out = self.features[8],
-                b_in  = self.bandwidths[9],
-                b_out = self.bandwidths[9],
-                b_inverse = self.bandwidths[10],
-                grid=grid_so3_1),
-        )
-
-        
-#         self.lsm = nn.LogSoftmax(dim=1)
-#         self.sm = nn.Softmax(dim=1)
-        
-
     def forward(self, x):
         # Encoder
         e1 = self.conv1(x)
         e2 = self.conv2(self.max_pool1(e1))
         e3 = self.conv3(self.max_pool2(e2))        
-        e4 = self.conv4(self.max_pool3(e3))
         
         # Decoder
-        d1 = self.deconv1(e4)
+        d1 = self.deconv1(e3)
         
         ud1 = self.unpool2(d1)
-        e3d1 = torch.cat([e3, ud1], dim=1)
-        d2 = self.deconv2(e3d1)
+        e2d1 = torch.cat([e2, ud1], dim=1)
+        d2 = self.deconv2(e2d1)
         
-        e2d2 = torch.cat([e2, self.unpool3(d2)], dim=1)
-        d3 = self.deconv3(e2d2)
-        
-        e1d3 = torch.cat([e1, self.unpool4(d3)], dim=1)
-        d4 = self.deconv4(e1d3)
+        e1d2 = torch.cat([e1, self.unpool3(d2)], dim=1)
+        d3 = self.deconv3(e1d2)
         
         # return self.sm(so3_to_s2_integrate(d4))
-        return so3_to_s2_integrate(d4)
+        return so3_to_s2_integrate(d3)

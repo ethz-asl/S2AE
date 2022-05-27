@@ -3,6 +3,7 @@
 import math
 import time
 import datetime
+import os
 
 import numpy as np
 
@@ -11,12 +12,14 @@ import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 import nvidia_smi
+from functools import partial
 
 from data_splitter import DataSplitter
 from external_splitter import ExternalSplitter
 from training_set import TrainingSetLidarSeg
-from model import Model
+from model_prior import Model
 from average_meter import AverageMeter
+from scheduler import *
 
 from metrics import *
 from loss import *
@@ -28,11 +31,11 @@ torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 100
-learning_rate = 1e-3
-n_epochs = 25
+learning_rate = 1.4e-3
+n_epochs = 20
 batch_size = 5
 num_workers = 32
-n_classes = 7
+n_classes = 17
 device_ids = [0]
 
 print(f"Initializing data structures...")
@@ -43,7 +46,14 @@ model = Model(bandwidth=bandwidth, n_classes=n_classes).cuda(0)
 net = nn.DataParallel(model, device_ids = device_ids).to(0)
 
 #optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
-optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+#optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+optimizer = torch.optim.SGD(net.parameters(),
+                            lr=learning_rate,
+                            momentum=0.9,
+                            weight_decay=1.0e-4,
+                            nesterov=True)
+
+
 
 # criterion = MainLoss()
 criterion = WceLovasz()
@@ -61,12 +71,16 @@ print(f'Saving final model to {model_save}')
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
 export_ds = '/media/scratch/berlukas/nuscenes'
 # export_ds = '/cluster/work/riner/users/berlukas'
+log_ds = f'{export_ds}/runs/log_{timestamp}'
+mode = 0o777
+os.mkdir(log_ds, mode)
+
 
 
 # training
-# cloud_filename = f"{export_ds}/sem_clouds.npy"
-# print(f"Loading clouds from {cloud_filename}.")
-# cloud_features = np.load(cloud_filename)
+cloud_filename = f"{export_ds}/sem_clouds1.npy"
+print(f"Loading clouds from {cloud_filename}.")
+cloud_features = np.load(cloud_filename)
 #cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
 
 
@@ -76,12 +90,15 @@ cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
 
 cloud_features_2 = np.load(cloud_filename_2)
 cloud_features_3 = np.load(cloud_filename_3)
-# print(f"Shape of sem clouds 1 is {cloud_features.shape}")
+#cloud_features = np.load(cloud_filename_3)
+
+
+print(f"Shape of sem clouds 1 is {cloud_features.shape}")
 print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
 print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
 # cloud_features = np.concatenate((cloud_features, cloud_features_2))
-cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
-# cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
+# cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
+cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
 # --------------------------------------------------------------------
 
 sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
@@ -112,7 +129,7 @@ print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_feat
 # --------------------------------------------------------------------
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-val_filename = f"{export_ds}/val/sem_clouds_val_400.npy"
+val_filename = f"{export_ds}/val/sem_clouds_val_16_tiny.npy"
 
 print(f"Loading clouds from {val_filename}.")
 cloud_val = np.load(val_filename)
@@ -139,6 +156,19 @@ else:
     print("Testing size: ", test_size)
 
 
+# scheduler = torch.optim.lr_scheduler.LambdaLR(
+#                 optimizer,
+#                 lr_lambda=partial(cosine_schedule_with_warmup,
+#                 num_epochs=n_epoch,
+#                 batch_size=batch_size,
+#                 dataset_size=train_size))
+
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                 optimizer, T_max=n_epochs)
+
+#scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+#                optimizer, T_0=2 * train_size, T_mult=2)
+
 def adjust_learning_rate_exp(optimizer, epoch_num, lr):
     decay_rate = 0.96
     new_lr = lr * math.pow(decay_rate, epoch_num)
@@ -163,10 +193,11 @@ def train_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_, t0):
         writer.add_scalar('Train/Loss', loss, n_iter)
         n_iter += 1
 
+        #scheduler.step(epoch + batch_idx / train_size)
         if batch_idx % 100 == 99:
             t1 = time.time()
-            print('[Epoch %d, Batch %4d] loss: %.8f time: %.5f lr: %.3e' %
-                  (epoch + 1, batch_idx + 1, loss_ / 100, (t1 - t0) / 60, lr))
+            print('[Epoch %d, Batch %4d] loss: %.8f time: %.5f' %
+                  (epoch + 1, batch_idx + 1, loss_ / 100, (t1 - t0) / 60))
             t0 = t1
             loss_ = 0.0
     return n_iter
@@ -176,6 +207,7 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     avg_pixel_acc_per_class = AverageMeter()
     avg_jacc = AverageMeter()
     avg_dice = AverageMeter()
+    last_segmentation = np.array([])
     net.eval()
     with torch.no_grad():
         for batch_idx, (cloud, lidarseg_gt) in enumerate(val_loader):
@@ -195,6 +227,9 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             avg_pixel_acc_per_class.update(pixel_acc_per_class)
             avg_jacc.update(jacc)
             avg_dice.update(dice)
+            
+            last_index = enc_dec_cloud.shape[0] - 1
+            last_segmentation = pred_segmentation.cpu().data.numpy()[last_index,:,:]
 
             n_iter += 1
 
@@ -204,22 +239,31 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         writer.add_scalar('Validation/AvgJaccardIndex', avg_jacc.avg, epoch_p_1)
         writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)
 
+        print('\n')
         print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy: {avg_pixel_acc.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
         print('\n')
+        
+        batch_log_filename = f'{log_ds}/seg_epoch-{epoch_p_1}.npy' 
+        np.save(batch_log_filename, last_segmentation)
+        print(f'Wrote batch log to {batch_log_filename}.')
+        print('\n')
+        
+        
     return n_iter
    
-def save_checkpoint(net, optimizer, criterion, lr, n_epoch):
+def save_checkpoint(net, optimizer, criterion, scheduler, n_epoch):
     checkpoint_path = f'./checkpoints/{model_save}_{n_epoch}.pth'
     torch.save({
             'epoch': n_epoch,
             'model_state_dict': net.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': criterion,
-            'lr': lr,
+            'scheduler': scheduler.state_dict(),
             }, checkpoint_path)
+    print('\n')
     print('================================')
     print(f'Saved checkpoint to {checkpoint_path}')
     print('================================')
@@ -268,6 +312,7 @@ def test_lidarseg(net, criterion, writer):
         writer.add_scalar('Test/AvgJaccardIndex', avg_jacc.avg, n_iter)
         writer.add_scalar('Test/AvgDiceCoefficient', avg_dice.avg, n_iter)
 
+        print('\n')
         print(f'Average Pixel Accuracy: {avg_pixel_acc.avg}')
         print(f'Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
         print(f'Average Jaccard Index: {avg_jacc.avg}')
@@ -284,13 +329,17 @@ val_iter = 0
 loss_ = 0.0
 print(f'Starting training using {n_epochs} epochs')
 for epoch in tqdm(range(n_epochs)):    
-    lr = adjust_learning_rate_exp(optimizer, epoch_num=epoch, lr=learning_rate)
+    # lr = adjust_learning_rate_exp(optimizer, epoch_num=epoch, lr=learning_rate)
     t0 = time.time()
 
     train_iter = train_lidarseg(net, criterion, optimizer, writer, epoch, train_iter, loss_, t0)    
+    scheduler.step()
+    
     val_iter = validate_lidarseg(net, criterion, optimizer, writer, epoch, val_iter)
+    
+    lr = optimizer.param_groups[0]["lr"]
     writer.add_scalar('Train/lr', lr, epoch)
-    save_checkpoint(net, optimizer, criterion, lr, epoch)
+    save_checkpoint(net, optimizer, criterion, scheduler, epoch)
 
 
 print("Training finished!")
