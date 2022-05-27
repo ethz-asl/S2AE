@@ -47,7 +47,7 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1e-3
-n_epochs = 1
+n_epochs = 20
 batch_size = 5
 num_workers = 32
 n_classes = 17
@@ -212,10 +212,10 @@ def train_fused_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_
         writer.add_scalar('Train/Loss', loss, n_iter)
         n_iter += 1
 
-        if batch_idx % 10 == 9:
+        if batch_idx % 100 == 99:
             t1 = time.time()
             print('[Epoch %d, Batch %4d] loss: %.8f time: %.5f' %
-                  (epoch + 1, batch_idx + 1, loss_ / 10, (t1 - t0) / 60))
+                  (epoch + 1, batch_idx + 1, loss_ / 100, (t1 - t0) / 60))
             t0 = t1
             loss_ = 0.0
     return n_iter
