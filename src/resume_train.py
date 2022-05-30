@@ -43,7 +43,7 @@ learning_rate = 1e-3
 n_epochs = 10
 batch_size = 10
 num_workers = 32
-n_classes = 9
+n_classes = 7
 device_ids = [0, 1, 2, 3, 4]
 
 print(f"Initializing data structures...")
@@ -97,8 +97,6 @@ dec_clouds = f"{export_ds}/decoded_lidar.npy"
 dec_gt = f"{export_ds}/decoded_gt_lidar.npy"
 
 
-# In[5]:
-
 
 # Initialize the data loaders
 #train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
@@ -121,7 +119,7 @@ dec_gt = f"{export_ds}/decoded_gt_lidar.npy"
     #print("Testing size: ", test_size)
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-val_filename = f"{export_ds}/sem_clouds_val.npy"
+val_filename = f"{export_ds}/sem_clouds_val_400.npy"
 
 print(f"Loading clouds from {val_filename}.")
 cloud_val = np.load(val_filename)
@@ -189,6 +187,9 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             writer.add_scalar('Validation/Loss', float(loss), n_iter)                        
             
             pred_segmentation = torch.argmax(enc_dec_cloud, dim=1)
+            mask = lidarseg_gt <= 0
+            pred_segmentation[mask] = 0
+
             pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
             avg_pixel_acc.update(pixel_acc)
             avg_pixel_acc_per_class.update(pixel_acc_per_class)
@@ -203,6 +204,7 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         writer.add_scalar('Validation/AvgJaccardIndex', avg_jacc.avg, epoch_p_1)
         writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)  
 
+        print('\n')
         print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy: {avg_pixel_acc.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
@@ -217,6 +219,7 @@ def save_checkpoint(net, optimizer, criterion, n_epoch):
             'model_state_dict': net.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': criterion,
+            'lr': lr,
             }, checkpoint_path)
     print('================================')
     print(f'Saved checkpoint to {checkpoint_path}')
@@ -274,7 +277,7 @@ train_iter = 0
 val_iter = 0
 loss_ = 0.0
 
-chkp = './checkpoints/test_lidarseg_20220430121512_3.pth'
+chkp = './checkpoints/euler_lidarseg_20220517114856_12.pth'
 
 print(f'Loading checkpoint from {chkp}...')
 checkpoint = torch.load(chkp)
@@ -284,6 +287,10 @@ net.load_state_dict(checkpoint['model_state_dict'])
 
 print('Loading trained optimizer...')
 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+#lr = checkpoint['lr']
+lr = 6.127e-04
+print(f"Last learning rate is {lr}")
 
 print('Loading trained model loss function...')
 criterion = checkpoint['loss']
@@ -296,13 +303,15 @@ torch.cuda.empty_cache()
 
 print(f'Starting training using {n_epochs} more epochs')
 for epoch in tqdm(range(n_epochs)):    
-    lr = adjust_learning_rate_exp(optimizer, epoch_num=epoch, lr=learning_rate)
-    t0 = time.time()
-
     cur_epoch = epoch + prev_epochs
+
+    lr = adjust_learning_rate_exp(optimizer, epoch_num=cur_epoch, lr=learning_rate)
+    writer.add_scalar('Train/lr', lr, cur_epoch)
+
+    t0 = time.time()
     train_iter = train_lidarseg(net, criterion, optimizer, writer, cur_epoch, train_iter, loss_, t0)    
     val_iter = validate_lidarseg(net, criterion, optimizer, writer, cur_epoch, val_iter)
-    writer.add_scalar('Train/lr', lr, cur_epoch)
+
     save_checkpoint(net, optimizer, criterion, cur_epoch)
         
 print("Training finished!")
