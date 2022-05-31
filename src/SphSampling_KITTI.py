@@ -160,7 +160,7 @@ CFG = load_config_file(config_file)
 color_dict = CFG["color_map"]
 nclasses = len(color_dict)
 scan = SemLaserScan(nclasses, color_dict, project=False)
-bw = 120
+bw = 100
 assert CFG is not None
   
 grid, _ = DHGrid.CreateGrid(bw)
