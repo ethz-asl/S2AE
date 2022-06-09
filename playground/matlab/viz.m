@@ -24,10 +24,10 @@ px_diff = px_fusion - px_orig;
 px_improvement = px_diff ./ px_orig * 100;
 
 clf;
-plot(1:n, smoothdata(dice_improvement), 'DisplayName', 'DICE Coefficient');
+plot(1:n, smoothdata(dice_improvement), '-', 'DisplayName', 'F1 Score');
 hold on;
-plot(1:n, smoothdata(jaccard_improvement), 'DisplayName', 'Jaccard Index');
-plot(1:n, smoothdata(px_improvement), 'DisplayName', 'Pixel Accuracy');
+plot(1:n, smoothdata(jaccard_improvement), '-.', 'DisplayName', 'mIoU');
+plot(1:n, smoothdata(px_improvement), '--', 'DisplayName', 'Pixel Accuracy');
 grid on;
 legend();
 ylabel('\mathrm{Improvement}\,[\%]')
@@ -41,15 +41,15 @@ set(gcf,'color','w');
 
 %% Performance Figure
 s2_projection_s = 0.015453020731608;
-s2_projection_cam_s = 0.0323154;
-dh_sampling_s = 0.16610;
-dh_sampling_cam_s = 0.16610;
-forward_pass_s = 0.0459082032995728;
-forward_pass_fusion_s = 0.0031;
-r3_back_projection = 0.01;
+s2_projection_cam_s = 0.151146816795901;
+dh_sampling_s = 0.101451406883183;
+dh_sampling_cam_s = 0.225838122589035;
+forward_pass_s = 0.086256835937500;
+forward_pass_fusion_s = 0.012549896240234;
+r3_back_projection = 0.014874991577148;
 
 X = categorical([1,2,3,4,5,6,7], 1:7, ...
-  {'$S^2$\,\textrm{Projection LiDAR}'; '$S^2$\,\textrm{Projection Visual}'; '\textrm{DH sampling LiDAR}'; '\textrm{DH sampling Visual}'; '\textrm{Inference Base}'; '\textrm{Inference Fusion}'; '\textrm{Backprojection}'},...
+  {'$S^2$\,\textrm{Projection LiDAR}'; '$S^2$\,\textrm{Projection Visual}'; '\textrm{DH sampling LiDAR}'; '\textrm{DH sampling Visual}'; '\textrm{Inference Base}'; '\textrm{Inference Fusion}'; '\textrm{Back-Projection}'},...
   'Ordinal', true);
 Y = [s2_projection_s, s2_projection_cam_s, dh_sampling_s, dh_sampling_cam_s, forward_pass_s, forward_pass_fusion_s, r3_back_projection]; 
 
@@ -82,7 +82,9 @@ ax.YMinorGrid=true;
 
 % yticklabels({'0','100','200','300','400','500','600'});
 
-disp(sprintf('Total time: %ds', sum(sum(Y))/100));
+disp(sprintf('Total time: %d s', sum(Y)/1000));
+image_proc = (s2_projection_cam_s + dh_sampling_cam_s + forward_pass_fusion_s)*1000;
+disp(sprintf('Total time without images: %d s', (sum(Y)-image_proc)/1000));
 
 %% Functions
 function beautifySimplePlot(name) 
