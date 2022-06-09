@@ -259,7 +259,7 @@ class FusedModel(nn.Module):
         super().__init__()
         self.lidar_encoder = LidarEncoder(100, n_classes).cuda(0)
         self.image_encoder = ImageEncoder(150, n_classes).cuda(0)
-        self.fused_decoder = FusedDecoder(10, 17).cuda(0)
+        self.fused_decoder = FusedDecoder(10, 7).cuda(0)
 
         print(f'LidarEncoder with: {self.lidar_encoder.features} features and {self.lidar_encoder.bandwidths} bandwith')
         print(f'ImageEncoder with: {self.image_encoder.features} features and {self.image_encoder.bandwidths} bandwith')
