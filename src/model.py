@@ -35,11 +35,15 @@ class Model(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
 
-        # v1
-        self.features = [2, 20, 45, 140, 180, 140, 45, 20, n_classes]
+        # v1 with 9
+        self.features = [2, 20, 40, 90, 160, 90, 40, 20, n_classes]
         self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
 
-        # small model 5x11GB
+        # v1 with 7
+        #self.features = [2, 20, 45, 140, 180, 140, 45, 20, n_classes]
+        #self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
+
+#         small model 5x11GB
         #self.features = [2, 20, 40, 60, 100, 60, 40, 20, n_classes]
         #self.bandwidths = [bandwidth, 50, 30, 15, 10, 8, 10, 15, 30, 50, bandwidth]
 
@@ -125,7 +129,6 @@ class Model(nn.Module):
                 grid=grid_so3_3),
             nn.BatchNorm3d(self.features[3], affine=True),
             nn.PReLU(),
-            nn.Dropout(p=0.4),
         )
         
         self.max_pool3 = SO3Pooling(self.bandwidths[3], self.bandwidths[4])

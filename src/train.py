@@ -17,7 +17,7 @@ from functools import partial
 from data_splitter import DataSplitter
 from external_splitter import ExternalSplitter
 from training_set import TrainingSetLidarSeg
-from model_prior import Model
+from model import Model
 from average_meter import AverageMeter
 from scheduler import *
 
@@ -32,10 +32,10 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 100
 learning_rate = 1.4e-3
-n_epochs = 20
+n_epochs = 100
 batch_size = 5
 num_workers = 32
-n_classes = 17
+n_classes = 9
 device_ids = [0]
 
 print(f"Initializing data structures...")
@@ -75,8 +75,6 @@ log_ds = f'{export_ds}/runs/log_{timestamp}'
 mode = 0o777
 os.mkdir(log_ds, mode)
 
-
-
 # training
 cloud_filename = f"{export_ds}/sem_clouds1.npy"
 print(f"Loading clouds from {cloud_filename}.")
@@ -85,20 +83,20 @@ cloud_features = np.load(cloud_filename)
 
 
 # --- DATA MERGING ---------------------------------------------------
-cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
-cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
+#cloud_filename_2 = f"{export_ds}/sem_clouds2.npy"
+#cloud_filename_3 = f"{export_ds}/sem_clouds3.npy"
 
-cloud_features_2 = np.load(cloud_filename_2)
-cloud_features_3 = np.load(cloud_filename_3)
+#cloud_features_2 = np.load(cloud_filename_2)
+#cloud_features_3 = np.load(cloud_filename_3)
 #cloud_features = np.load(cloud_filename_3)
 
 
 print(f"Shape of sem clouds 1 is {cloud_features.shape}")
-print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
-print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
+#print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
+#print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
 # cloud_features = np.concatenate((cloud_features, cloud_features_2))
 # cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
-cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
+#cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
 # --------------------------------------------------------------------
 
 sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
@@ -111,40 +109,37 @@ print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_feat
 # --------------------------------------------------------------------
 
 # --- DATA SPLITTING -------------------------------------------------
-# sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
-# cloud_features = cloud_features[:, 0:2, :, :]
-# print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
 # # Initialize the data loaders
-# train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
-# print(f"Total size of the training set: {len(train_set)}")
-# split = DataSplitter(train_set, False, test_train_split=1.0, val_train_split=0.05, shuffle=True)
+train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
+print(f"Total size of the training set: {len(train_set)}")
+split = DataSplitter(train_set, False, test_train_split=1.0, val_train_split=0.05, shuffle=True)
 
-# # Split the data into train, val and optionally test
-# train_loader, val_loader, test_loader = split.get_split(
-#     batch_size=batch_size, num_workers=num_workers)
-# train_size = split.get_train_size()
-# val_size = split.get_val_size()
-# test_size = split.get_test_size()
+# Split the data into train, val and optionally test
+train_loader, val_loader, test_loader = split.get_split(
+    batch_size=batch_size, num_workers=num_workers)
+train_size = split.get_train_size()
+val_size = split.get_val_size()
+test_size = split.get_test_size()
 # --------------------------------------------------------------------
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-val_filename = f"{export_ds}/val/sem_clouds_val_16_tiny.npy"
+#val_filename = f"{export_ds}/val/sem_clouds_val_16_tiny.npy"
 
-print(f"Loading clouds from {val_filename}.")
-cloud_val = np.load(val_filename)
+#print(f"Loading clouds from {val_filename}.")
+#cloud_val = np.load(val_filename)
 
-sem_val_features = np.copy(cloud_val[:, 2, :, :])
-val_features = cloud_val[:, 0:2, :, :]
-print(f"Shape clouds is {val_features.shape} and sem clouds is {sem_val_features.shape}")
+#sem_val_features = np.copy(cloud_val[:, 2, :, :])
+#val_features = cloud_val[:, 0:2, :, :]
+#print(f"Shape clouds is {val_features.shape} and sem clouds is {sem_val_features.shape}")
 
-train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
-val_set = TrainingSetLidarSeg(val_features, sem_val_features)
-split = ExternalSplitter(train_set, val_set)
-train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
-train_size = split.get_train_size()
-val_size = split.get_val_size()
-test_size = 0
+#train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
+#val_set = TrainingSetLidarSeg(val_features, sem_val_features)
+#split = ExternalSplitter(train_set, val_set)
+#train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
+#train_size = split.get_train_size()
+#val_size = split.get_val_size()
+#test_size = 0
 # --------------------------------------------------------------------
 
 
