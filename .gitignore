@@ -144,3 +144,4 @@ dmypy.json
 lsf.*
 test_fusion_*
 fused_model_*
+.vscode/
