@@ -1,5 +1,4 @@
 import open3d as o3d
-from open3d.j_visualizer import JVisualizer
 
 import numpy as np
 from data_source import DataSource
