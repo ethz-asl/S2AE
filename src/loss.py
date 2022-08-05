@@ -124,7 +124,9 @@ class WceLovasz(nn.Module):
     def __init__(self, ignore = 0):
         super().__init__()
         self.ignore = ignore
-        self.wce = torch.nn.CrossEntropyLoss(ignore_index=self.ignore)
+        self.class_weights = np.array([0, 1.58770358, 4.08255301, 1., 1.26586145, 1.11405485, 1.25146044])
+        self.class_weights = torch.from_numpy(self.class_weights).cuda().float()
+        self.wce = torch.nn.CrossEntropyLoss(weight=self.class_weights, ignore_index=self.ignore)
 
     def forward(self, decoded, teacher, size_average=True, batch_all=True):
         wce_losses = self.wce(decoded, teacher)
