@@ -36,8 +36,8 @@ class ImageEncoder(nn.Module):
         super().__init__()
         
         # Small Model 1x24
-        self.features = [3, 50, 150]
-        self.bandwidths = [bandwidth, 20, 10]
+        self.features = [3, 20, 40]
+        self.bandwidths = [bandwidth, 30, 20]
 
 #         Big Model 5x24GB
 #         self.features = [3, 32, 128]
@@ -71,6 +71,7 @@ class ImageEncoder(nn.Module):
         self.max_pool1 = SO3Pooling(self.bandwidths[1], self.bandwidths[2])
 
         self.conv2 = nn.Sequential(
+            nn.Dropout(p=0.1),
             SO3Convolution(
                 nfeature_in  = self.features[1],
                 nfeature_out = self.features[2],
@@ -80,7 +81,18 @@ class ImageEncoder(nn.Module):
                 grid=grid_so3_2),
             nn.BatchNorm3d(self.features[2], affine=True),
             nn.PReLU(),
+            SO3Convolution(
+                nfeature_in  = self.features[2],
+                nfeature_out = self.features[2],
+                b_in  = self.bandwidths[2],
+                b_out = self.bandwidths[2],
+                b_inverse = self.bandwidths[2],
+                grid=grid_so3_2),
+            nn.BatchNorm3d(self.features[2], affine=True),
+            nn.PReLU()
         )
+        
+        
 
     def forward(self, x):
         e1 = self.conv1(x)
@@ -96,8 +108,8 @@ class LidarEncoder(nn.Module):
         super().__init__()
         
         # Small Model 1x24
-        self.features = [9, 50, 150]
-        self.bandwidths = [bandwidth, 20, 10]
+        self.features = [9, 20, 40]
+        self.bandwidths = [bandwidth, 30, 20]
 
 #         Big Model 5x24GB
 #         self.features = [3, 32, 128]
@@ -135,6 +147,7 @@ class LidarEncoder(nn.Module):
         self.max_pool1 = SO3Pooling(self.bandwidths[1], self.bandwidths[2])
 
         self.conv2 = nn.Sequential(
+            nn.Dropout(p=0.1),
             SO3Convolution(
                 nfeature_in  = self.features[1],
                 nfeature_out = self.features[2],
@@ -144,6 +157,15 @@ class LidarEncoder(nn.Module):
                 grid=grid_so3_2),
             nn.BatchNorm3d(self.features[2], affine=True),
             nn.PReLU(),
+            SO3Convolution(
+                nfeature_in  = self.features[2],
+                nfeature_out = self.features[2],
+                b_in  = self.bandwidths[2],
+                b_out = self.bandwidths[2],
+                b_inverse = self.bandwidths[2],
+                grid=grid_so3_2),
+            nn.BatchNorm3d(self.features[2], affine=True),
+            nn.PReLU()
         )
 
     def forward(self, x):
@@ -159,8 +181,8 @@ class FusedDecoder(nn.Module):
         super().__init__()
 
 #       Small Model 1x24GB
-        self.features = [300, 50, 17]
-        self.bandwidths = [10, 20, 100]
+        self.features = [80, 20, 7]
+        self.bandwidths = [20, 30, 100]
         
 #         Big Model 5x24GB
 #         self.features = [256, 32, 9]
@@ -173,7 +195,6 @@ class FusedDecoder(nn.Module):
         grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/32, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
 
         self.deconv1 = nn.Sequential(
-            nn.Dropout(p=0.1),
             SO3Convolution(
                 nfeature_in  = self.features[0],
                 nfeature_out = self.features[1],
@@ -182,12 +203,22 @@ class FusedDecoder(nn.Module):
                 b_inverse = self.bandwidths[0],
                 grid=grid_so3_2),
             nn.BatchNorm3d(self.features[1], affine=True),
+            nn.PReLU(),
+            SO3Convolution(
+                nfeature_in  = self.features[1],
+                nfeature_out = self.features[1],
+                b_in  = self.bandwidths[0],
+                b_out = self.bandwidths[0],
+                b_inverse = self.bandwidths[0],
+                grid=grid_so3_2),
+            nn.BatchNorm3d(self.features[1], affine=True),
+            nn.PReLU()
         )
 
         self.unpool1 = SO3Unpooling(self.bandwidths[0], self.bandwidths[1])
         
         # Small Model 1x24GB
-        self.skip_size = 50 + 50
+        self.skip_size = self.features[1]*2
         
         # Big Model 5x24GB
 #         self.skip_size = 32 + 32
@@ -212,9 +243,6 @@ class FusedDecoder(nn.Module):
             nn.PReLU()
         )
 
-        self.lsm = nn.LogSoftmax(dim=1)
-        self.sm = nn.Softmax(dim=1)
-
     def forward(self, x, e_img_lidar):
         d1 = self.deconv1(x)
 #         d2 = self.deconv2(self.unpool1(d1))
@@ -224,7 +252,6 @@ class FusedDecoder(nn.Module):
         e_ud1 = torch.cat([e_img_lidar, ud1], dim=1)        
         d2 = self.deconv2(e_ud1)
 
-        # return self.sm(so3_to_s2_integrate(d4))
         return so3_to_s2_integrate(d2)
 
 class FusedModel(nn.Module):
@@ -232,7 +259,7 @@ class FusedModel(nn.Module):
         super().__init__()
         self.lidar_encoder = LidarEncoder(100, n_classes).cuda(0)
         self.image_encoder = ImageEncoder(150, n_classes).cuda(0)
-        self.fused_decoder = FusedDecoder(10, 16).cuda(0)
+        self.fused_decoder = FusedDecoder(10, 7).cuda(0)
 
         print(f'LidarEncoder with: {self.lidar_encoder.features} features and {self.lidar_encoder.bandwidths} bandwith')
         print(f'ImageEncoder with: {self.image_encoder.features} features and {self.image_encoder.bandwidths} bandwith')

@@ -137,7 +137,6 @@ def test_lidarseg(net, criterion, writer):
                 gt = torch.reshape(lidarseg_gt[i, :, :], [1, 2*bw, 2*bw]).int()
                 metric.add(pred, gt)
             n_iter += 1
-
             
         writer.add_scalar('Test/AvgPixelAccuracy', avg_pixel_acc.avg, n_iter)   
         writer.add_scalar('Test/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, n_iter)   
