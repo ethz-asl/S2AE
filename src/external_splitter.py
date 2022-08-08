@@ -35,9 +35,10 @@ class ExternalSplitter:
     def get_split(self, batch_size=50, num_workers=4):
         logging.debug('Initializing train-validation-test dataloaders')
 
-        if self.train_sampler != None and self.val_sampler != None:
+        if self.train_sampler != None: 
             self.train_loader = self.get_train_loader(
                 batch_size=batch_size, num_workers=num_workers)
+        if self.val_sampler != None:
             self.val_loader = self.get_validation_loader(
                 batch_size=batch_size, num_workers=num_workers)
 

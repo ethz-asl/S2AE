@@ -28,10 +28,7 @@ from loss import *
 from model import Model
 from metrics import *
 from average_meter import AverageMeter
-
-    
-# In[3]:
-
+from iou import IoU
 
 print(f"Initializing CUDA...")
 #torch.cuda.set_device(0)
@@ -60,10 +57,6 @@ print('\n')
 print(f'All network instances are initialized.')
 print(f'Saving final model to {model_save}.')
 
-
-# In[4]:
-
-
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
 # export_ds = '/media/scratch/berlukas/nuscenes'
 export_ds = '/cluster/work/riner/users/berlukas'
@@ -91,13 +84,6 @@ sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
 cloud_features = cloud_features[:, 0:2, :, :]
 print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
-# testing
-dec_input = f"{export_ds}/decoded_input_lidar.npy"
-dec_clouds = f"{export_ds}/decoded_lidar.npy"
-dec_gt = f"{export_ds}/decoded_gt_lidar.npy"
-
-
-
 # Initialize the data loaders
 #train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
 #print(f"Total size of the training set: {len(train_set)}")
@@ -119,7 +105,7 @@ dec_gt = f"{export_ds}/decoded_gt_lidar.npy"
     #print("Testing size: ", test_size)
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-val_filename = f"{export_ds}/sem_clouds_val_400.npy"
+val_filename = f"{export_ds}/sem_clouds_val_final.npy"
 
 print(f"Loading clouds from {val_filename}.")
 cloud_val = np.load(val_filename)
@@ -136,9 +122,6 @@ train_size = split.get_train_size()
 val_size = split.get_val_size()
 test_size = 0
 # --------------------------------------------------------------------
-
-# In[5]:
-
 
 def adjust_learning_rate_exp(optimizer, epoch_num, lr):
     decay_rate = 0.96
@@ -176,6 +159,11 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     avg_pixel_acc_per_class = AverageMeter()
     avg_jacc = AverageMeter()
     avg_dice = AverageMeter()
+
+    ignore_index = 0
+    bw=bandwidth
+    metric = IoU(n_classes, ignore_index=ignore_index)
+
     net.eval()
     with torch.no_grad():            
         for batch_idx, (cloud, lidarseg_gt) in enumerate(val_loader):            
@@ -196,6 +184,12 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             avg_jacc.update(jacc)
             avg_dice.update(dice)
 
+            n_batch = enc_dec_cloud.shape[0]
+            for i in range(0, n_batch):                
+                pred = torch.reshape(pred_segmentation[i, :, :], [1, 2*bw, 2*bw]).int()
+                gt = torch.reshape(lidarseg_gt[i, :, :], [1, 2*bw, 2*bw]).int()
+                metric.add(pred, gt)
+
             n_iter += 1
             
         epoch_p_1 = epoch+1
@@ -210,6 +204,13 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
         print('\n')
+        print('========================')
+        print(f'Mean IoU is: {miou}')
+        print(f'Class-wise IoU is: {iou[1:]}')
+        print('========================')
+        print('\n')
+        print('\n')
+
     return n_iter
 
 def save_checkpoint(net, optimizer, criterion, n_epoch):
@@ -269,15 +270,13 @@ def test_lidarseg(net, criterion, writer):
     return all_input_clouds, all_decoded_clouds, all_gt_clouds
 
 
-# In[6]:
-
-
 abort = False
 train_iter = 0
 val_iter = 0
 loss_ = 0.0
 
-chkp = './checkpoints/euler_lidarseg_20220517114856_12.pth'
+chkp = './checkpoints/euler_lidarseg_20220527192933_15.pth'
+
 
 print(f'Loading checkpoint from {chkp}...')
 checkpoint = torch.load(chkp)
@@ -289,7 +288,7 @@ print('Loading trained optimizer...')
 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
 #lr = checkpoint['lr']
-lr = 6.127e-04
+lr = 5.421e-04
 print(f"Last learning rate is {lr}")
 
 print('Loading trained model loss function...')
