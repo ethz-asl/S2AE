@@ -34,10 +34,14 @@ def so3_to_s2_integrate(x):
 class Model(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
+        
+        # v3 with 7 classes with bw120 (small)
+        self.features = [1, 15, 40, 70, 100, 70, 40, 15, n_classes]
+        self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
 
         # v1 with 9
-        self.features = [2, 20, 40, 90, 160, 90, 40, 20, n_classes]
-        self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
+        # self.features = [2, 20, 40, 90, 160, 90, 40, 20, n_classes]
+        # self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
 
         # v1 with 7
         #self.features = [2, 20, 45, 140, 180, 140, 45, 20, n_classes]
