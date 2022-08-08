@@ -190,5 +190,4 @@ class IoU(Metric):
         # Just in case we get a division by 0, ignore/hide the error
         with np.errstate(divide='ignore', invalid='ignore'):
             iou = true_positive / (true_positive + false_positive + false_negative)
-
         return iou, np.nanmean(iou)
