@@ -30,12 +30,12 @@ print(f"Initializing CUDA...")
 torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
-bandwidth = 100
+bandwidth = 120
 learning_rate = 1.4e-3
-n_epochs = 100
+n_epochs = 50
 batch_size = 5
 num_workers = 32
-n_classes = 9
+n_classes = 7
 device_ids = [0]
 
 print(f"Initializing data structures...")
@@ -76,10 +76,21 @@ mode = 0o777
 os.mkdir(log_ds, mode)
 
 # training
-cloud_filename = f"{export_ds}/sem_clouds1.npy"
-print(f"Loading clouds from {cloud_filename}.")
-cloud_features = np.load(cloud_filename)
-#cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
+# cloud_filename = f"{export_ds}/sem_clouds1.npy"
+# print(f"Loading clouds from {cloud_filename}.")
+# cloud_features = np.load(cloud_filename)
+# cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
+data_ds = f'{export_ds}/training'
+samples = os.listdir(data_ds)
+cloud_features = None
+for sample in samples:
+    sem_clouds_filename = f'{data_ds}/{sample}'
+    print(f'Loading from sem clouds from {sem_clouds_filename}')
+    if cloud_features is None:
+        cloud_features = np.load(sem_clouds_filename)
+    else:
+        features = np.load(sem_clouds_filename)
+        cloud_features = np.concatenate((cloud_features, features))
 
 
 # --- DATA MERGING ---------------------------------------------------
@@ -99,8 +110,9 @@ print(f"Shape of sem clouds 1 is {cloud_features.shape}")
 #cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))
 # --------------------------------------------------------------------
 
-sem_cloud_features = np.copy(cloud_features[:, 2, :, :])
-cloud_features = cloud_features[:, 0:2, :, :]
+sem_cloud_features = np.copy(cloud_features[:, 1, :, :])
+cloud_features = cloud_features[:, 0, :, :]
+cloud_features = np.reshape(cloud_features, (-1, 1, 2*bandwidth, 2*bandwidth))
 print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
 
 # --- TEST TRAINING --------------------------------------------------
@@ -110,36 +122,44 @@ print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_feat
 
 # --- DATA SPLITTING -------------------------------------------------
 
-# # Initialize the data loaders
-train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
-print(f"Total size of the training set: {len(train_set)}")
-split = DataSplitter(train_set, False, test_train_split=1.0, val_train_split=0.05, shuffle=True)
+# Initialize the data loaders
+# train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
+# print(f"Total size of the training set: {len(train_set)}")
+# split = DataSplitter(train_set, False, test_train_split=1.0, val_train_split=0.05, shuffle=True)
 
-# Split the data into train, val and optionally test
-train_loader, val_loader, test_loader = split.get_split(
-    batch_size=batch_size, num_workers=num_workers)
-train_size = split.get_train_size()
-val_size = split.get_val_size()
-test_size = split.get_test_size()
+# # Split the data into train, val and optionally test
+# train_loader, val_loader, test_loader = split.get_split(
+#     batch_size=batch_size, num_workers=num_workers)
+# train_size = split.get_train_size()
+# val_size = split.get_val_size()
+# test_size = split.get_test_size()
 # --------------------------------------------------------------------
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-#val_filename = f"{export_ds}/val/sem_clouds_val_16_tiny.npy"
+val_ds = f'{export_ds}/val'
+samples = os.listdir(val_ds)
+val_features = None
+for sample in samples:
+    sem_clouds_filename = f'{val_ds}/{sample}'
+    print(f'Loading from sem clouds from {sem_clouds_filename}')
+    if val_features is None:
+        val_features = np.load(sem_clouds_filename)
+    else:
+        features = np.load(sem_clouds_filename)
+        val_features = np.concatenate((val_features, features))
 
-#print(f"Loading clouds from {val_filename}.")
-#cloud_val = np.load(val_filename)
+sem_val_features = np.copy(val_features[:, 1, :, :])
+val_features = val_features[:, 0, :, :]
+val_features = np.reshape(val_features, (-1, 1, 2*bandwidth, 2*bandwidth))
+print(f"Shape clouds is {val_features.shape} and sem clouds is {sem_val_features.shape}")
 
-#sem_val_features = np.copy(cloud_val[:, 2, :, :])
-#val_features = cloud_val[:, 0:2, :, :]
-#print(f"Shape clouds is {val_features.shape} and sem clouds is {sem_val_features.shape}")
-
-#train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
-#val_set = TrainingSetLidarSeg(val_features, sem_val_features)
-#split = ExternalSplitter(train_set, val_set)
-#train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
-#train_size = split.get_train_size()
-#val_size = split.get_val_size()
-#test_size = 0
+train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
+val_set = TrainingSetLidarSeg(val_features, sem_val_features)
+split = ExternalSplitter(train_set, val_set)
+train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
+train_size = split.get_train_size()
+val_size = split.get_val_size()
+test_size = 0
 # --------------------------------------------------------------------
 
 
