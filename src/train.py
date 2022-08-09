@@ -225,8 +225,7 @@ else:
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                  optimizer, T_max=n_epochs)
 
-#scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-#                optimizer, T_0=2 * train_size, T_mult=2)
+
 
 def adjust_learning_rate_exp(optimizer, epoch_num, lr):
     decay_rate = 0.96
