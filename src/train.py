@@ -19,7 +19,6 @@ from external_splitter import ExternalSplitter
 from training_set import TrainingSetLidarSeg
 from model import Model
 from average_meter import AverageMeter
-from scheduler import *
 
 from metrics import *
 from loss import *
@@ -80,7 +79,7 @@ os.mkdir(log_ds, mode)
 # print(f"Loading clouds from {cloud_filename}.")
 # cloud_features = np.load(cloud_filename)
 # cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
-data_ds = f'{export_ds}/val'
+data_ds = f'{export_ds}/training'
 samples = os.listdir(data_ds)
 cloud_features = None
 for sample in samples:
@@ -91,7 +90,6 @@ for sample in samples:
     else:
         features = np.load(sem_clouds_filename)
         cloud_features = np.concatenate((cloud_features, features))
-    break
 
 
 # --- DATA MERGING ---------------------------------------------------
