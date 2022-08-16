@@ -34,7 +34,7 @@ def so3_to_s2_integrate(x):
 class Model(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
-        
+
         # v3 with 7 classes with bw120 (small)
         self.features = [1, 15, 40, 70, 100, 70, 40, 15, n_classes]
         self.bandwidths = [bandwidth, 40, 30, 15, 10, 8, 10, 15, 30, 40, bandwidth]
@@ -56,8 +56,8 @@ class Model(nn.Module):
         #self.bandwidths = [bandwidth, 60, 40, 30, 20, 10, 20, 30, 40, 60, bandwidth]
 
         # big model 5x24GB (batch size = 10)
-#         self.features = [2, 20, 40, 80, 180, 80, 40, 20, n_classes]
-#         self.bandwidths = [bandwidth, 50, 40, 20, 15, 10, 15, 20, 40, 50, bandwidth]
+        self.features = [2, 20, 40, 80, 180, 80, 40, 20, n_classes]
+        self.bandwidths = [bandwidth, 50, 40, 20, 15, 10, 15, 20, 40, 50, bandwidth]
 
         print(f'[Model] We have {self.features} features.' )
         print(f'[Model] We have {self.bandwidths} bandwidths.' )
@@ -138,6 +138,7 @@ class Model(nn.Module):
         self.max_pool3 = SO3Pooling(self.bandwidths[3], self.bandwidths[4])
         
         self.conv4 = nn.Sequential(
+            nn.Dropout(p=0.4),
             SO3Convolution(
                 nfeature_in  = self.features[3],
                 nfeature_out = self.features[4],

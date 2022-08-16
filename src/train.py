@@ -33,9 +33,11 @@ bandwidth = 120
 learning_rate = 1.4e-3
 n_epochs = 50
 batch_size = 5
+# batch_size = 10
+
 num_workers = 32
 n_classes = 7
-device_ids = [0]
+device_ids = [0, 1, 2, 3, 4]
 
 print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')
@@ -64,12 +66,12 @@ print('\n')
 print(f'All instances initialized.')
 print(f'Saving final model to {model_save}')
 
-
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
 export_ds = '/media/scratch/berlukas/nuscenes'
 # export_ds = '/cluster/work/riner/users/berlukas'
+
 log_ds = f'{export_ds}/runs/log_{timestamp}'
 mode = 0o777
 os.mkdir(log_ds, mode)
@@ -104,6 +106,7 @@ for sample in samples:
 print(f"Shape of sem clouds 1 is {cloud_features.shape}")
 #print(f"Shape of sem clouds 2 is {cloud_features_2.shape}")
 #print(f"Shape of sem clouds 3 is {cloud_features_3.shape}")
+
 # cloud_features = np.concatenate((cloud_features, cloud_features_2))
 # cloud_features = np.concatenate((cloud_features_2, cloud_features_3))
 #cloud_features = np.concatenate((cloud_features, cloud_features_2, cloud_features_3))

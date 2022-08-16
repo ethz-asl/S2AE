@@ -65,6 +65,7 @@ def jaccard_index(hist):
     B = hist.sum(dim=0)
     jaccard = A_inter_B / (A + B - A_inter_B + EPS)
     avg_jacc = nanmean(jaccard)
+    print(f'Jaccard is {jaccard.cpu().data.numpy()} average is {avg_jacc}')
     return avg_jacc
 
 

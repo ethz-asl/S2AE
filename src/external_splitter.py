@@ -43,7 +43,7 @@ class ExternalSplitter:
         self.train_loader = None
         self.val_loader = None
 
-        if self.train_sampler != None:
+        if self.train_sampler != None: 
             self.train_loader = self.get_train_loader(
                 batch_size=batch_size, num_workers=num_workers)
         if self.val_sampler != None:
