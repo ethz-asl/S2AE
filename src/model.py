@@ -31,9 +31,26 @@ def so3_to_s2_integrate(x):
     assert x.size(-2) == x.size(-3)
     return torch.sum(x, dim=-1) * (2*np.pi/x.size(-1))
 
+class Normalize(torch.nn.Module):
+
+     def __init__(self, mu, sigma):
+         super().__init__()
+
+         self.register_buffer('mu', torch.FloatTensor([mu]))
+         self.register_buffer('sigma', torch.FloatTensor([sigma]))
+
+     def forward(self, x):
+         normalized = ((x - self.mu[None,: , None, None].to(x.device)) / 
+                       self.sigma[None,: , None, None].to(x.device))
+         return normalized
+
 class Model(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
+        
+        mu = 1.2839795737632667 
+        sigma = 7.69180843049593
+        self.normalize = Normalize(mu, sigma)
 
         # v3 with 7 classes with bw120 (small)
         self.features = [1, 15, 40, 70, 100, 70, 40, 15, n_classes]
@@ -258,6 +275,8 @@ class Model(nn.Module):
         
 
     def forward(self, x):
+        x = self.normalize(x)
+        
         # Encoder
         e1 = self.conv1(x)
         e2 = self.conv2(self.max_pool1(e1))

@@ -22,6 +22,7 @@ from average_meter import AverageMeter
 
 from metrics import *
 from loss import *
+from iou import IoU
     
 # ## Initialize some parameter
 print(f"Initializing CUDA...")
@@ -30,7 +31,7 @@ torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 120
-learning_rate = 1.4e-3
+learning_rate = 2.4e-3
 n_epochs = 50
 batch_size = 5
 # batch_size = 10
@@ -269,6 +270,7 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
     gl_avg_pixel_acc_per_class = AverageMeter()
     gl_avg_jacc = AverageMeter()
     gl_avg_dice = AverageMeter()
+    giou = IoU(num_classes=n_classes, ignore_index=0)
     
     with torch.no_grad():
         for val_loader in val_loaders:
@@ -276,6 +278,7 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             avg_pixel_acc_per_class = AverageMeter()
             avg_jacc = AverageMeter()
             avg_dice = AverageMeter()
+            iou = IoU(num_classes=n_classes, ignore_index=0)
             last_segmentation = np.array([])
             for batch_idx, (cloud, lidarseg_gt) in enumerate(val_loader):
                 cloud, lidarseg_gt = cloud.cuda().float(), lidarseg_gt.cuda().long()
@@ -300,6 +303,8 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
                 gl_avg_jacc.update(jacc)
                 gl_avg_dice.update(dice)
                 
+                iou.add(pred_segmentation, lidarseg_gt)
+                giou.add(pred_segmentation, lidarseg_gt)
 
                 last_index = enc_dec_cloud.shape[0] - 1
                 last_segmentation = pred_segmentation.cpu().data.numpy()[last_index,:,:]
@@ -319,6 +324,10 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
             print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
             print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
+            print(' --------------------------------------------------------------------------')
+            cl_iou, m_iou = iou.value()
+            print(f'[Validation for epoch {epoch_p_1}] mIoU: {m_iou}')
+            print(f'[Validation for epoch {epoch_p_1}] class-wise IoU: {cl_iou[1:]}')            
             print('\n')
             k += 1
             
@@ -336,6 +345,10 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {gl_avg_pixel_acc_per_class.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {gl_avg_jacc.avg}')
         print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {gl_avg_dice.avg}')
+        print(' --------------------------------------------------------------------------')
+        cl_iou, m_iou = giou.value()
+        print(f'[Validation for epoch {epoch_p_1}] mIoU: {m_iou}')
+        print(f'[Validation for epoch {epoch_p_1}] class-wise IoU: {cl_iou[1:]}')            
         print('\n')
         
         batch_log_filename = f'{log_ds}/seg_epoch-{epoch_p_1}.npy' 
