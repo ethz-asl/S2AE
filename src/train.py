@@ -38,7 +38,7 @@ batch_size = 5
 
 num_workers = 32
 n_classes = 7
-device_ids = [0, 1, 2, 3, 4]
+device_ids = [0]
 
 print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')
