@@ -19,10 +19,10 @@ from external_splitter import ExternalSplitter
 from training_set import TrainingSetLidarSeg
 from model import Model
 from average_meter import AverageMeter
-from scheduler import *
 
 from metrics import *
 from loss import *
+from iou import IoU
     
 # ## Initialize some parameter
 print(f"Initializing CUDA...")
@@ -31,7 +31,7 @@ torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
 bandwidth = 120
-learning_rate = 1.4e-3
+learning_rate = 2.4e-3
 n_epochs = 50
 batch_size = 5
 # batch_size = 10
@@ -117,6 +117,8 @@ sem_cloud_features = np.copy(cloud_features[:, 1, :, :])
 cloud_features = cloud_features[:, 0, :, :]
 cloud_features = np.reshape(cloud_features, (-1, 1, 2*bandwidth, 2*bandwidth))
 print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_features.shape}")
+print(f'Loading training data is complete.')
+print('\n')
 
 # --- TEST TRAINING --------------------------------------------------
 # n_process = 200
@@ -139,32 +141,73 @@ print(f"Shape clouds is {cloud_features.shape} and sem clouds is {sem_cloud_feat
 # --------------------------------------------------------------------
 
 # --- EXTERNAL SPLITTING ---------------------------------------------
-val_ds = f'{export_ds}/val'
-samples = os.listdir(val_ds)
-val_features = None
-for sample in samples:
-    sem_clouds_filename = f'{val_ds}/{sample}'
-    print(f'Loading from sem clouds from {sem_clouds_filename}')
-    if val_features is None:
-        val_features = np.load(sem_clouds_filename)
-    else:
-        features = np.load(sem_clouds_filename)
-        val_features = np.concatenate((val_features, features))
+# Combine all the validation sets to a single combined set.
+# val_ds = f'{export_ds}/val'
+# samples = os.listdir(val_ds)
+# val_features = None
+# for sample in samples:
+#     sem_clouds_filename = f'{val_ds}/{sample}'
+#     print(f'Loading from sem clouds from {sem_clouds_filename}')
+#     if val_features is None:
+#         val_features = np.load(sem_clouds_filename)
+#     else:
+#         features = np.load(sem_clouds_filename)
+#         val_features = np.concatenate((val_features, features))
 
-sem_val_features = np.copy(val_features[:, 1, :, :])
-val_features = val_features[:, 0, :, :]
-val_features = np.reshape(val_features, (-1, 1, 2*bandwidth, 2*bandwidth))
-print(f"Shape clouds is {val_features.shape} and sem clouds is {sem_val_features.shape}")
+# sem_val_features = np.copy(val_features[:, 1, :, :])
+# val_features = val_features[:, 0, :, :]
+# val_features = np.reshape(val_features, (-1, 1, 2*bandwidth, 2*bandwidth))
+# print(f"Shape clouds is {val_features.shape} and sem clouds is {sem_val_features.shape}")
 
-train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
-val_set = TrainingSetLidarSeg(val_features, sem_val_features)
-split = ExternalSplitter(train_set, val_set)
-train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
-train_size = split.get_train_size()
-val_size = split.get_val_size()
-test_size = 0
+# train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
+# val_set = TrainingSetLidarSeg(val_features, sem_val_features)
+# split = ExternalSplitter(train_set, val_set)
+# train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
+# train_size = split.get_train_size()
+# val_size = split.get_val_size()
+# test_size = 0
 # --------------------------------------------------------------------
 
+# --- EXTERNAL SPLITTING - Separate ----------------------------------
+# Create a validation set for each set.
+val_ds = f'{export_ds}/val'
+val_samples = os.listdir(val_ds)
+val_sets = []
+for sample in val_samples:
+    sem_clouds_filename = f'{val_ds}/{sample}'
+    print(f'Loading from sem clouds from {sem_clouds_filename}')
+    val_features = np.load(sem_clouds_filename)
+
+    sem_val_features = np.copy(val_features[:, 1, :, :])
+    val_features = val_features[:, 0, :, :]
+    val_features = np.reshape(val_features, (-1, 1, 2*bandwidth, 2*bandwidth))
+    print(f"Shape clouds is {val_features.shape} and sem clouds is {sem_val_features.shape}")
+    val_set = TrainingSetLidarSeg(val_features, sem_val_features)
+    val_sets.append(val_set)
+
+n_val_sets = len(val_sets)
+assert n_val_sets > 0
+print(f'Loaded {n_val_sets} validation sets. Setting up the validation loaders now.')
+print('\n')
+
+train_set = TrainingSetLidarSeg(cloud_features, sem_cloud_features)
+split = ExternalSplitter(train_set, val_sets[0])
+train_loader, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
+train_size = split.get_train_size()
+test_size = 0
+
+val_size = 0
+val_size = val_size + split.get_val_size()
+
+val_loaders = [val_loader]
+for val_i in range(1, n_val_sets):
+    split = ExternalSplitter(None, val_sets[val_i])
+    _, val_loader = split.get_split(batch_size=batch_size, num_workers=num_workers)
+    
+    val_size = val_size + split.get_val_size()
+    val_loaders.append(val_loader)
+
+# --------------------------------------------------------------------
 
 print("Training size: ", train_size)
 print("Validation size: ", val_size)
@@ -184,8 +227,7 @@ else:
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                  optimizer, T_max=n_epochs)
 
-#scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-#                optimizer, T_0=2 * train_size, T_mult=2)
+
 
 def adjust_learning_rate_exp(optimizer, epoch_num, lr):
     decay_rate = 0.96
@@ -221,47 +263,92 @@ def train_lidarseg(net, criterion, optimizer, writer, epoch, n_iter, loss_, t0):
     return n_iter
 
 def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
-    avg_pixel_acc = AverageMeter()
-    avg_pixel_acc_per_class = AverageMeter()
-    avg_jacc = AverageMeter()
-    avg_dice = AverageMeter()
-    last_segmentation = np.array([])
     net.eval()
+    k = 0
+    epoch_p_1 = epoch+1
+    gl_avg_pixel_acc = AverageMeter()
+    gl_avg_pixel_acc_per_class = AverageMeter()
+    gl_avg_jacc = AverageMeter()
+    gl_avg_dice = AverageMeter()
+    giou = IoU(num_classes=n_classes, ignore_index=0)
+    
     with torch.no_grad():
-        for batch_idx, (cloud, lidarseg_gt) in enumerate(val_loader):
-            cloud, lidarseg_gt = cloud.cuda().float(), lidarseg_gt.cuda().long()
-            enc_dec_cloud = net(cloud)
+        for val_loader in val_loaders:
+            avg_pixel_acc = AverageMeter()
+            avg_pixel_acc_per_class = AverageMeter()
+            avg_jacc = AverageMeter()
+            avg_dice = AverageMeter()
+            iou = IoU(num_classes=n_classes, ignore_index=0)
+            last_segmentation = np.array([])
+            for batch_idx, (cloud, lidarseg_gt) in enumerate(val_loader):
+                cloud, lidarseg_gt = cloud.cuda().float(), lidarseg_gt.cuda().long()
+                enc_dec_cloud = net(cloud)
 
-            optimizer.zero_grad()
-            loss = criterion(enc_dec_cloud, lidarseg_gt)
-            writer.add_scalar('Validation/Loss', loss.mean().item(), n_iter)
+                optimizer.zero_grad()
+                loss = criterion(enc_dec_cloud, lidarseg_gt)
+                writer.add_scalar('Validation/Loss', loss.mean().item(), n_iter)
 
-            pred_segmentation = torch.argmax(enc_dec_cloud, dim=1)
-            mask = lidarseg_gt <= 0
-            pred_segmentation[mask] = 0
+                pred_segmentation = torch.argmax(enc_dec_cloud, dim=1)
+                mask = lidarseg_gt <= 0
+                pred_segmentation[mask] = 0
 
-            pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
-            avg_pixel_acc.update(pixel_acc)
-            avg_pixel_acc_per_class.update(pixel_acc_per_class)
-            avg_jacc.update(jacc)
-            avg_dice.update(dice)
+                pixel_acc, pixel_acc_per_class, jacc, dice = eval_metrics(lidarseg_gt, pred_segmentation, num_classes = n_classes)
+                avg_pixel_acc.update(pixel_acc)
+                avg_pixel_acc_per_class.update(pixel_acc_per_class)
+                avg_jacc.update(jacc)
+                avg_dice.update(dice)
+                
+                gl_avg_pixel_acc.update(pixel_acc)
+                gl_avg_pixel_acc_per_class.update(pixel_acc_per_class)
+                gl_avg_jacc.update(jacc)
+                gl_avg_dice.update(dice)
+                
+                iou.add(pred_segmentation, lidarseg_gt)
+                giou.add(pred_segmentation, lidarseg_gt)
+
+                last_index = enc_dec_cloud.shape[0] - 1
+                last_segmentation = pred_segmentation.cpu().data.numpy()[last_index,:,:]
+
+                n_iter += 1
+                
+            print('============================================================================')
+            print(f'Validation Results for Validation Loader: {val_samples[k]}.')
             
-            last_index = enc_dec_cloud.shape[0] - 1
-            last_segmentation = pred_segmentation.cpu().data.numpy()[last_index,:,:]
+            writer.add_scalar(f'Validation/{val_samples[k]}/AvgPixelAccuracy', avg_pixel_acc.avg, epoch_p_1)
+            writer.add_scalar(f'Validation/{val_samples[k]}/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, epoch_p_1)
+            writer.add_scalar(f'Validation/{val_samples[k]}/AvgJaccardIndex', avg_jacc.avg, epoch_p_1)
+            writer.add_scalar(f'Validation/{val_samples[k]}/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)
 
-            n_iter += 1
-
-        epoch_p_1 = epoch+1
-        writer.add_scalar('Validation/AvgPixelAccuracy', avg_pixel_acc.avg, epoch_p_1)
-        writer.add_scalar('Validation/AvgPixelAccuracyPerClass', avg_pixel_acc_per_class.avg, epoch_p_1)
-        writer.add_scalar('Validation/AvgJaccardIndex', avg_jacc.avg, epoch_p_1)
-        writer.add_scalar('Validation/AvgDiceCoefficient', avg_dice.avg, epoch_p_1)
+            print('\n')
+            print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy: {avg_pixel_acc.avg}')
+            print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
+            print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
+            print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
+            print(' --------------------------------------------------------------------------')
+            cl_iou, m_iou = iou.value()
+            print(f'[Validation for epoch {epoch_p_1}] mIoU: {m_iou}')
+            print(f'[Validation for epoch {epoch_p_1}] class-wise IoU: {cl_iou[1:]}')            
+            print('\n')
+            k += 1
+            
+        
+        print('============================================================================')
+        print(f'Global Validation Results.')
+            
+        writer.add_scalar(f'Validation/AvgPixelAccuracy', gl_avg_pixel_acc.avg, epoch_p_1)
+        writer.add_scalar(f'Validation/AvgPixelAccuracyPerClass', gl_avg_pixel_acc_per_class.avg, epoch_p_1)
+        writer.add_scalar(f'Validation/AvgJaccardIndex', gl_avg_jacc.avg, epoch_p_1)
+        writer.add_scalar(f'Validation/AvgDiceCoefficient', gl_avg_dice.avg, epoch_p_1)
 
         print('\n')
-        print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy: {avg_pixel_acc.avg}')
-        print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {avg_pixel_acc_per_class.avg}')
-        print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {avg_jacc.avg}')
-        print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {avg_dice.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy: {gl_avg_pixel_acc.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average Pixel Accuracy per Class: {gl_avg_pixel_acc_per_class.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average Jaccard Index: {gl_avg_jacc.avg}')
+        print(f'[Validation for epoch {epoch_p_1}] Average DICE Coefficient: {gl_avg_dice.avg}')
+        print(' --------------------------------------------------------------------------')
+        cl_iou, m_iou = giou.value()
+        print(f'[Validation for epoch {epoch_p_1}] mIoU: {m_iou}')
+        print(f'[Validation for epoch {epoch_p_1}] class-wise IoU: {cl_iou[1:]}')            
         print('\n')
         
         batch_log_filename = f'{log_ds}/seg_epoch-{epoch_p_1}.npy' 

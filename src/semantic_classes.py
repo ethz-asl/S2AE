@@ -86,7 +86,33 @@ class SemanticClasses(object):
             return 6    
         else:
             return 0
-    
+
+    def map_poss_to_nuscenes_label(label):
+        noise = [0,22]
+        living = [4,5]
+        vehicle = [6,7,21]
+        road = []
+        ground = []
+        manmade = [10,11,12,13,14,15,16,17]
+        vegetation = [8,9]
+
+        if label in noise:
+            return 0
+        elif label in vehicle:
+            return 1
+        elif label in living:
+            return 2
+        elif label in road:
+            return 3
+        elif label in ground:
+            return 4
+        elif label in manmade:
+            return 5
+        elif label in vegetation:
+            return 6    
+        else:
+            return 0
+
     def map_kitti_to_nuscenes_label(label):
         noise = [0,1,44,99]
         living = [30,254]
@@ -115,7 +141,7 @@ class SemanticClasses(object):
             if label >= 0:
                 print(f'WARNING CLASS LABEL {label} not handled!!!!')
             return 0    
-    
+
     def map_nuscenes_label_16(label):                       
         noise = [1, 5, 6, 8, 10, 11, 13, 19, 20, 0, 29, 31]
         barrier = [9]
