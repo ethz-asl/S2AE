@@ -68,6 +68,7 @@ class SemanticClasses(object):
         ground = [17,20,21,22]
         manmade = [8,9,10,11,14]
         vegetation = [15,16]
+        label = int(label)
 
         if label in noise:
             return 0
@@ -87,13 +88,14 @@ class SemanticClasses(object):
             return 0
     
     def map_kitti_to_nuscenes_label(label):
-        noise = [0, 1, 11, 15, 16, 20,31,32, 44, 60, 71, 72, 80,81,99,253,255,256,259, 52]
+        noise = [0,1,44,99]
         living = [30,254]
-        vehicle = [10,13,18,252,257,258]
-        objects = [51, 80, 81]
-        ground = [40,48,49]
-        buildings = [50]
+        vehicle = [10,11,13,15,16,18,20,31,32,252,253,255,256,257,258,259]
+        road = [40,60]
+        ground = [40,48,49,72]
+        manmade = [50,51,52,80,81]
         vegetation = [70, 71]
+        label = int(label)
 
         if label in noise:
             return 0
@@ -101,11 +103,11 @@ class SemanticClasses(object):
             return 1
         elif label in living:
             return 2
-        elif label in objects:
+        elif label in road:
             return 3
         elif label in ground:
             return 4
-        elif label in buildings:
+        elif label in manmade:
             return 5
         elif label in vegetation:
             return 6    
