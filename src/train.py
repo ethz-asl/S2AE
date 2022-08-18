@@ -331,6 +331,11 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             print('\n')
             k += 1
             
+            batch_log_filename = f'{log_ds}/seg_epoch-{epoch_p_1}-val-{val_samples[k]}.npy' 
+            np.save(batch_log_filename, last_segmentation)
+            print(f'Wrote batch log to {batch_log_filename}.')
+            print('\n')
+            
         
         print('============================================================================')
         print(f'Global Validation Results.')
@@ -351,10 +356,6 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
         print(f'[Validation for epoch {epoch_p_1}] class-wise IoU: {cl_iou[1:]}')            
         print('\n')
         
-        batch_log_filename = f'{log_ds}/seg_epoch-{epoch_p_1}.npy' 
-        np.save(batch_log_filename, last_segmentation)
-        print(f'Wrote batch log to {batch_log_filename}.')
-        print('\n')
         
         
     return n_iter
