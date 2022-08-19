@@ -38,8 +38,7 @@ class SemanticClasses(object):
         noise = [0, 1, 5, 10, 11, 13, 29, 31]
         living = [2,3,4,6,7,8]
         vehicle = [14,15,16,17,18,19,20,21,22,23]    
-        road = [24]
-        ground = [25,26,27]
+        ground = [24,25,26,27]
         manmade = [9,12,28]
         vegetation = [30]
 
@@ -49,14 +48,12 @@ class SemanticClasses(object):
             return 1
         elif label in living:
             return 2
-        elif label in road:
-            return 3
         elif label in ground:
-            return 4
+            return 3
         elif label in manmade:
-            return 5
+            return 4
         elif label in vegetation:
-            return 6    
+            return 5    
         else:
             return 0
 
@@ -64,8 +61,7 @@ class SemanticClasses(object):
         noise = [0]
         living = [7]
         vehicle = [1,2,3,4,5,6,12,13]
-        road = [18,19]
-        ground = [17,20,21,22]
+        ground = [17,18,19,20,21,22]
         manmade = [8,9,10,11,14]
         vegetation = [15,16]
         label = int(label)
@@ -76,23 +72,20 @@ class SemanticClasses(object):
             return 1
         elif label in living:
             return 2
-        elif label in road:
-            return 3
         elif label in ground:
-            return 4
+            return 3
         elif label in manmade:
-            return 5
+            return 4
         elif label in vegetation:
-            return 6    
+            return 5    
         else:
             return 0
 
     def map_poss_to_nuscenes_label(label):
-        noise = [0,22]
+        noise = [0]
         living = [4,5]
         vehicle = [6,7,21]
-        road = []
-        ground = []
+        ground = [22]
         manmade = [10,11,12,13,14,15,16,17]
         vegetation = [8,9]
 
@@ -102,14 +95,12 @@ class SemanticClasses(object):
             return 1
         elif label in living:
             return 2
-        elif label in road:
-            return 3
         elif label in ground:
-            return 4
+            return 3
         elif label in manmade:
-            return 5
+            return 4
         elif label in vegetation:
-            return 6    
+            return 5
         else:
             return 0
 
@@ -117,8 +108,7 @@ class SemanticClasses(object):
         noise = [0,1,44,99]
         living = [30,254]
         vehicle = [10,11,13,15,16,18,20,31,32,252,253,255,256,257,258,259]
-        road = [40,60]
-        ground = [40,48,49,72]
+        ground = [40,48,49,60,72]
         manmade = [50,51,52,80,81]
         vegetation = [70, 71]
         label = int(label)
@@ -129,14 +119,12 @@ class SemanticClasses(object):
             return 1
         elif label in living:
             return 2
-        elif label in road:
-            return 3
         elif label in ground:
-            return 4
+            return 3
         elif label in manmade:
-            return 5
+            return 4
         elif label in vegetation:
-            return 6    
+            return 5
         else:
             if label >= 0:
                 print(f'WARNING CLASS LABEL {label} not handled!!!!')
