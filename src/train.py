@@ -30,7 +30,7 @@ print(f"Initializing CUDA...")
 torch.backends.cudnn.benchmark = True
 
 print(f"Setting parameters...")
-bandwidth = 120
+bandwidth = 50
 learning_rate = 2.4e-3
 n_epochs = 50
 batch_size = 5
@@ -329,11 +329,11 @@ def validate_lidarseg(net, criterion, optimizer, writer, epoch, n_iter):
             print(f'[Validation for epoch {epoch_p_1}] mIoU: {m_iou}')
             print(f'[Validation for epoch {epoch_p_1}] class-wise IoU: {cl_iou[1:]}')            
             print('\n')
-            k += 1
             
             batch_log_filename = f'{log_ds}/seg_epoch-{epoch_p_1}-val-{val_samples[k]}.npy' 
             np.save(batch_log_filename, last_segmentation)
             print(f'Wrote batch log to {batch_log_filename}.')
+            k += 1
             print('\n')
             
         
