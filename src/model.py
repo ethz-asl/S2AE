@@ -48,12 +48,12 @@ class Model(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
         
-        mu = 1.2839795737632667 
-        sigma = 7.69180843049593
+        mu = 1.5984423678560475 
+        sigma = 8.400141767886875
         self.normalize = Normalize(mu, sigma)
 
         # TESTING
-        self.features = [1, 30, 50, 120, 180, 120, 50, 30, n_classes]
+        self.features = [1, 30, 47, 120, 180, 120, 47, 30, n_classes]
         self.bandwidths = [bandwidth, 40, 30, 20, 10, 8, 10, 20, 30, 40, bandwidth]
         
         # v3 with 7 classes with bw120 (small)
@@ -83,11 +83,12 @@ class Model(nn.Module):
         print(f'[Model] We have {self.features} features.' )
         print(f'[Model] We have {self.bandwidths} bandwidths.' )
 
-        grid_s2    =  s2_near_identity_grid(n_alpha=6, max_beta=np.pi/256, n_beta=1)
-        grid_so3_1 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/128, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        grid_so3_2 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 64, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        grid_so3_3 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 32, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
-        grid_so3_4 = so3_near_identity_grid(n_alpha=6, max_beta=np.pi/ 16, n_beta=1, max_gamma=2*np.pi, n_gamma=6)
+        grid_size = 8
+        grid_s2    =  s2_near_identity_grid(n_alpha=grid_size, max_beta=np.pi/16, n_beta=1)
+        grid_so3_1 = so3_near_identity_grid(n_alpha=grid_size, max_beta=np.pi/16, n_beta=1, max_gamma=2*np.pi, n_gamma=grid_size)
+        grid_so3_2 = so3_near_identity_grid(n_alpha=grid_size, max_beta=np.pi/ 8, n_beta=1, max_gamma=2*np.pi, n_gamma=grid_size)
+        grid_so3_3 = so3_near_identity_grid(n_alpha=grid_size, max_beta=np.pi/ 4, n_beta=1, max_gamma=2*np.pi, n_gamma=grid_size)
+        grid_so3_4 = so3_near_identity_grid(n_alpha=grid_size, max_beta=np.pi/ 2, n_beta=1, max_gamma=2*np.pi, n_gamma=grid_size)
         
         self.conv1 = nn.Sequential(
             S2Convolution(
