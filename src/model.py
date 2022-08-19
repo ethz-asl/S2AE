@@ -53,7 +53,7 @@ class Model(nn.Module):
         self.normalize = Normalize(mu, sigma)
 
         # TESTING
-        self.features = [1, 30, 50, 100, 120, 100, 50, 30, n_classes]
+        self.features = [1, 30, 50, 120, 180, 120, 50, 30, n_classes]
         self.bandwidths = [bandwidth, 40, 30, 20, 10, 8, 10, 20, 30, 40, bandwidth]
         
         # v3 with 7 classes with bw120 (small)
