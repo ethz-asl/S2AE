@@ -126,7 +126,8 @@ class WceLovasz(nn.Module):
         self.ignore = ignore
 #         self.class_weights = np.array([0, 1.58770358, 4.08255301, 1., 1.26586145, 1.11405485, 1.25146044])
 #         self.class_weights = np.array([0, 1.50119213, 4.32795156, 1.0, 1.14440329, 1.07012146, 1.09708853]) # new weights
-        self.class_weights = np.array([0, 1.48627078, 4.43900744, 1.0, 1.12330422, 1.08843017, 1.12513952])
+        # self.class_weights = np.array([0, 1.48627078, 4.43900744, 1.0, 1.12330422, 1.08843017, 1.12513952])
+        self.class_weights = np.array([0.0, 108.11283694, 2576.5262789, 15.96423925, 44.74384341, 45.75927258])
         self.class_weights = torch.from_numpy(self.class_weights).cuda().float()
         self.wce = torch.nn.CrossEntropyLoss(weight=self.class_weights, ignore_index=self.ignore)
 
