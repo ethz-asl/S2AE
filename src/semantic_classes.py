@@ -129,6 +129,35 @@ class SemanticClasses(object):
             if label >= 0:
                 print(f'WARNING CLASS LABEL {label} not handled!!!!')
             return 0    
+        
+    def map_a2d2_to_nuscenes_label(label):
+        noise = [25,26,28,29,34,36,37,38,39,41,42,44,46,47,49,51,52,53,54]
+        living = [8,9,10]
+        vehicle = [0,1,2,3,4,5,6,7,11,12,13,14,15,16,23,24,31]
+        ground = [27,32,33,40,45]
+        manmade = [17,18,19,20,21,22,30,35,48,50,52]
+        vegetation = [43]
+        label = int(label)
+
+        if label in noise:
+            return 0
+        elif label in vehicle:
+            return 1
+        elif label in living:
+            return 2
+        elif label in ground:
+            return 3
+        elif label in manmade:
+            return 4
+        elif label in vegetation:
+            return 5
+        else:
+            if label >= 0:
+                print(f'WARNING CLASS LABEL {label} not handled!!!!')
+            return 0    
+        
+    def map_usl_to_nuscenes_label(label):
+        return SemanticClasses.map_kitti_to_nuscenes_label(label)
 
     def map_nuscenes_label_16(label):                       
         noise = [1, 5, 6, 8, 10, 11, 13, 19, 20, 0, 29, 31]
