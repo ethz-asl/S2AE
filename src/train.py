@@ -32,7 +32,7 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 50
 learning_rate = 5e-3
-n_epochs = 50
+n_epochs = 65
 batch_size = 5
 # batch_size = 10
 
