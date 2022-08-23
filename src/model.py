@@ -48,12 +48,12 @@ class Model(nn.Module):
     def __init__(self, bandwidth=100, n_classes=32):
         super().__init__()
         
-        mu = 1.5984423678560475 
-        sigma = 8.400141767886875
+        mu = 1.4801858478096677 
+        sigma = 8.058974821123359
         self.normalize = Normalize(mu, sigma)
 
         # TESTING
-        self.features = [1, 30, 45, 120, 180, 120, 45, 30, n_classes]
+        self.features = [1, 30, 45, 120, 200, 120, 45, 30, n_classes]
         self.bandwidths = [bandwidth, 40, 30, 20, 10, 8, 10, 20, 30, 40, bandwidth]
         
         # v3 with 7 classes with bw120 (small)
