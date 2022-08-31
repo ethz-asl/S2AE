@@ -32,13 +32,13 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 50
 learning_rate = 5e-3
-n_epochs = 65
-batch_size = 5
+n_epochs = 100
+batch_size = 20
 # batch_size = 10
 
 num_workers = 32
 n_classes = 6
-device_ids = [0]
+device_ids = [0,1,2,3]
 
 print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')
@@ -70,8 +70,8 @@ print(f'Saving final model to {model_save}')
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
-export_ds = '/media/scratch/berlukas/nuscenes'
-# export_ds = '/cluster/work/riner/users/berlukas'
+# export_ds = '/media/scratch/berlukas/nuscenes'
+export_ds = '/cluster/work/riner/users/berlukas'
 
 log_ds = f'{export_ds}/runs/log_{timestamp}'
 mode = 0o777
@@ -82,7 +82,7 @@ os.mkdir(log_ds, mode)
 # print(f"Loading clouds from {cloud_filename}.")
 # cloud_features = np.load(cloud_filename)
 # cloud_filename = f"{export_ds}/sem_clouds_100_200.npy"
-data_ds = f'{export_ds}/training'
+data_ds = f'{export_ds}/training_kitti'
 samples = os.listdir(data_ds)
 cloud_features = None
 for sample in samples:
@@ -170,7 +170,7 @@ print('\n')
 
 # --- EXTERNAL SPLITTING - Separate ----------------------------------
 # Create a validation set for each set.
-val_ds = f'{export_ds}/val'
+val_ds = f'{export_ds}/val_kitti'
 val_samples = os.listdir(val_ds)
 val_sets = []
 for sample in val_samples:
