@@ -32,13 +32,22 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 50
 learning_rate = 5e-3
+<<<<<<< HEAD
 n_epochs = 65
 batch_size = 5
+=======
+n_epochs = 50
+batch_size = 6
+>>>>>>> main
 # batch_size = 10
 
 num_workers = 32
 n_classes = 6
+<<<<<<< HEAD
 device_ids = [0]
+=======
+device_ids = [0,1,2]
+>>>>>>> main
 
 print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')
@@ -70,8 +79,8 @@ print(f'Saving final model to {model_save}')
 # ## Load the dataset
 
 # export_ds = '/mnt/data/datasets/nuscenes/processed'
-export_ds = '/media/scratch/berlukas/nuscenes'
-# export_ds = '/cluster/work/riner/users/berlukas'
+# export_ds = '/media/scratch/berlukas/nuscenes'
+export_ds = '/cluster/work/riner/users/berlukas'
 
 log_ds = f'{export_ds}/runs/log_{timestamp}'
 mode = 0o777
