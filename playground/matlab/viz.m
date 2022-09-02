@@ -86,6 +86,83 @@ disp(sprintf('Total time: %d s', sum(Y)/1000));
 image_proc = (s2_projection_cam_s + dh_sampling_cam_s + forward_pass_fusion_s)*1000;
 disp(sprintf('Total time without images: %d s', (sum(Y)-image_proc)/1000));
 
+%% Performance Figure new
+s2_projection_s = 0.015453020731608;
+dh_sampling_s = 0.013319947595567; 
+forward_pass_s = 0.086256835937500;
+r3_back_projection = 0.014874991577148;
+
+X = categorical([1,2,3,4], 1:4, ...
+  {'$S^2$\,\textrm{Projection}'; '\textrm{DH Sampling}'; '\textrm{Inference}'; '\textrm{Back-Projection}'},...
+  'Ordinal', true);
+Y = [s2_projection_s, dh_sampling_s, forward_pass_s, r3_back_projection]; 
+
+% convert to ms
+Y = Y .* 1000;
+
+figure;
+b = bar(X,Y','FaceColor','flat');
+cm = colormap('gray');
+for k = 1:size(Y,2)
+  b.CData(k,:) = cm(k*10,:);  
+end
+
+
+beautifySimplePlot("")
+ylabel("\textrm{Execution Time}\,[\textrm{ms}]");
+% xlabel("\textrm{Neighbors}");
+% legend('Location', 'Best');
+
+prepareFig();
+set(gcf, 'color', 'w');
+set(gca, 'color', 'w');
+
+grid on;
+ax=gca;
+ax.YGrid=false;
+ax.XGrid=true;
+ax.GridAlpha = 0.75;
+ax.YMinorGrid=true;
+
+% yticklabels({'0','100','200','300','400','500','600'});
+
+disp(sprintf('Total time: %f s', sum(Y)/1000));
+
+%% Rotation Figure
+
+% ours
+ours_iou = [0.5216151475906372, 0.5240460634231567,0.5252231359481812,0.5243923664093018,0.5244590044021606,0.5247631669044495,0.5239261388778687];
+
+% overlapnet
+rangenet_iou = [0.524,0.153, 0.099, 0.088, 0.096, 0.13, 0.524];
+
+x=[0,30,60,90,120,150,180];
+
+figure;
+hold on;
+
+plot(x, ours_iou*100, '-x', 'DisplayName', 'Ours');
+plot(x, rangenet_iou*100, ':o', 'DisplayName', 'Rangenet++');
+ylim([0, 80]);
+xticks(0:30:180)
+xlim([0, 180]);
+
+beautifySimplePlot("")
+ylabel("\textrm{mIoU}\,[\%]");
+xlabel("\textrm{Rotational shift of RPY}\,[\textrm{deg}]");
+legend('Location', 'Best', 'Orientation','horizontal');
+
+prepareFig();
+set(gcf, 'color', 'w');
+set(gca, 'color', 'w');
+
+grid on;
+ax=gca;
+ax.YGrid=false;
+ax.XGrid=true;
+ax.GridAlpha = 0.75;
+ax.YMinorGrid=true;
+
 %% Functions
 function beautifySimplePlot(name) 
       set(gca         , ...

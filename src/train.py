@@ -32,13 +32,22 @@ torch.backends.cudnn.benchmark = True
 print(f"Setting parameters...")
 bandwidth = 50
 learning_rate = 5e-3
+<<<<<<< HEAD
+n_epochs = 65
+batch_size = 5
+=======
 n_epochs = 50
 batch_size = 6
+>>>>>>> main
 # batch_size = 10
 
 num_workers = 32
 n_classes = 6
+<<<<<<< HEAD
+device_ids = [0]
+=======
 device_ids = [0,1,2]
+>>>>>>> main
 
 print(f"Initializing data structures...")
 print(f'Training will run on these gpus {device_ids}')

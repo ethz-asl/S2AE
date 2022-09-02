@@ -7,9 +7,15 @@ import sys
 from tqdm.auto import tqdm
 
 class Sphere:
-    def __init__(self, point_cloud=None, bw=None, features=None):
+    def __init__(self, point_cloud=None, bw=None, features=None, normalize=False):
         if point_cloud is not None:
+            if normalize:
+                xyz = point_cloud[:,0:3]
+                mu = xyz.mean()                
+                point_cloud[:,0:3] = (xyz - mu)
+            
             self.point_cloud = point_cloud
+            
             (self.sphere, self.ranges) = self.__projectPointCloudOnSphere(point_cloud)
             self.intensity = point_cloud[:,3]
             self.semantics = []
