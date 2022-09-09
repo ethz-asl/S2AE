@@ -156,6 +156,32 @@ class SemanticClasses(object):
                 print(f'WARNING CLASS LABEL {label} not handled!!!!')
             return 0    
         
+    def map_pc_urban_to_nuscenes_label(label):
+        noise = [0,7,16,21,22,23,24,25,27,29]
+        living = [3]
+        vehicle = [1,2,4,5,6]
+        ground = [11, 12]
+        manmade = [10,13,14,15,17,18,19,20,26,28,30]
+        vegetation = [8,9]
+        label = int(label)
+
+        if label in noise:
+            return 0
+        elif label in vehicle:
+            return 1
+        elif label in living:
+            return 2
+        elif label in ground:
+            return 3
+        elif label in manmade:
+            return 4
+        elif label in vegetation:
+            return 5
+        else:
+            if label >= 0:
+                print(f'WARNING CLASS LABEL {label} not handled!!!!')
+            return 0    
+        
     def map_usl_to_nuscenes_label(label):
         return SemanticClasses.map_kitti_to_nuscenes_label(label)
 
