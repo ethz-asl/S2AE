@@ -131,7 +131,8 @@ disp(sprintf('Total time: %f s', sum(Y)/1000));
 %% Rotation Figure
 
 ours_iou = [0.5216151475906372, 0.5240460634231567,0.5252231359481812,0.5243923664093018,0.5244590044021606,0.5247631669044495,0.5239261388778687];
-rangenet_iou = [0.524,0.153, 0.099, 0.088, 0.096, 0.13, 0.524];
+rangenet_iou = [0.524, 0.153, 0.099, 0.088, 0.096, 0.13, 0.524];
+mininet_iou = [0.511, 0.142, 0.127, 0.132, 0.129, 0.191, 0.511];
 salsanext_iou = [0.507, 0.126, 0.126, 0.135, 0.124, 0.129, 0.507];
 
 x=[0,30,60,90,120,150,180];
@@ -141,7 +142,9 @@ hold on;
 
 plot(x, ours_iou*100, '-x', 'DisplayName', 'Ours');
 plot(x, rangenet_iou*100, ':o', 'DisplayName', 'Rangenet++');
-plot(x, salsanext_iou*100, ':*', 'DisplayName', 'SalsaNext');
+plot(x, mininet_iou*100, '--+', 'DisplayName', '3D-MiniNet');
+plot(x, salsanext_iou*100, '-.*', 'DisplayName', 'SalsaNext');
+
 ylim([0, 80]);
 xticks(0:30:180)
 xlim([0, 180]);
@@ -168,7 +171,7 @@ function beautifySimplePlot(name)
         'FontName'    , 'Helvetica' );
       
       set(gca         , ...
-        'FontSize'    , 10           );
+        'FontSize'    , 12           );
       
       set(gca, ...
         'Box'         , 'off'     , ...
@@ -180,6 +183,6 @@ function beautifySimplePlot(name)
         'XGrid'       , 'on'      , ...
         'XColor'      , [.3 .3 .3], ...
         'YColor'      , [.3 .3 .3], ...        
-        'LineWidth'   , 1.5         );
+        'LineWidth'   , 2.5         );
 %       title(name);
 end  
