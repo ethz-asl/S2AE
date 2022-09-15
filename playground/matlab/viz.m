@@ -44,7 +44,7 @@ s2_projection_s = 0.015453020731608;
 s2_projection_cam_s = 0.151146816795901;
 dh_sampling_s = 0.101451406883183;
 dh_sampling_cam_s = 0.225838122589035;
-forward_pass_s = 0.086256835937500;
+forward_pass_s = 0.016992405164156028;
 forward_pass_fusion_s = 0.012549896240234;
 r3_back_projection = 0.014874991577148;
 
@@ -89,7 +89,7 @@ disp(sprintf('Total time without images: %d s', (sum(Y)-image_proc)/1000));
 %% Performance Figure new
 s2_projection_s = 0.015453020731608;
 dh_sampling_s = 0.013319947595567; 
-forward_pass_s = 0.086256835937500;
+forward_pass_s = 0.016992405164156028;
 r3_back_projection = 0.014874991577148;
 
 X = categorical([1,2,3,4], 1:4, ...
@@ -104,7 +104,7 @@ figure;
 b = bar(X,Y','FaceColor','flat');
 cm = colormap('gray');
 for k = 1:size(Y,2)
-  b.CData(k,:) = cm(k*10,:);  
+  b.CData(k,:) = cm(k*20,:);  
 end
 
 
