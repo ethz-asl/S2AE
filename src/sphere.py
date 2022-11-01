@@ -6,21 +6,22 @@ import open3d as o3d
 import sys
 from tqdm.auto import tqdm
 
+
 class Sphere:
     def __init__(self, point_cloud=None, bw=None, features=None, normalize=False):
         if point_cloud is not None:
             if normalize:
-                xyz = point_cloud[:,0:3]
-                mu = xyz.mean()                
-                point_cloud[:,0:3] = (xyz - mu)
-            
+                xyz = point_cloud[:, 0:3]
+                mu = xyz.mean()
+                point_cloud[:, 0:3] = (xyz - mu)
+
             self.point_cloud = point_cloud
-            
+
             (self.sphere, self.ranges) = self.__projectPointCloudOnSphere(point_cloud)
-            self.intensity = point_cloud[:,3]
+            self.intensity = point_cloud[:, 3]
             self.semantics = []
             if point_cloud.shape[1] >= 5:
-                self.semantics = point_cloud[:,4]
+                self.semantics = point_cloud[:, 4]
         elif bw is not None and features is not None:
             self.constructFromFeatures(bw, features)
 
@@ -62,9 +63,9 @@ class Sphere:
 
         for i in range(grid.shape[1]):
             for j in range(grid.shape[2]):
-                [k, nn_idx, nn_dist] = pcd_tree.search_knn_vector_3d(cart_grid[:, i, j], kNearestNeighbors)
+                [k, nn_idx, nn_dist] = pcd_tree.search_knn_vector_3d(
+                    cart_grid[:, i, j], kNearestNeighbors)
 
-                # TODO(lbern): Average over all neighbors
                 for k in range(kNearestNeighbors):
                     cur_idx = nn_idx[k]
                     cur_dist = np.absolute(nn_dist[k])
@@ -72,7 +73,8 @@ class Sphere:
                         continue
 
                     range_value = self.ranges[cur_idx]
-                    range_value = range_value if not np.isnan(range_value) else -1
+                    range_value = range_value if not np.isnan(
+                        range_value) else -1
                     features[0, i, j] = range_value
 
                     intensity = self.intensity[cur_idx]
@@ -81,14 +83,15 @@ class Sphere:
 
                     if has_semantics:
                         semantics = self.semantics[cur_idx]
-                        semantics = semantics if not np.isnan(semantics) else -1
+                        semantics = semantics if not np.isnan(
+                            semantics) else -1
                         features[2, i, j] = semantics
 
         return features
 
     def __projectPointCloudOnSphere(self, cloud):
         # sqrt(x^2+y^2+z^2)
-        dist = np.sqrt(cloud[:,0]**2 + cloud[:,1]**2 + cloud[:,2]**2)
+        dist = np.sqrt(cloud[:, 0]**2 + cloud[:, 1]**2 + cloud[:, 2]**2)
         #dist = np.sqrt(np.power(sph_image_cart[:,0],2) + np.power(sph_image_cart[:,1],2) + np.power(sph_image_cart[:,2],2))
 
         projected = np.empty([len(cloud), 3])
@@ -96,19 +99,22 @@ class Sphere:
 
         # Some values might be zero or NaN, lets ignore them for now.
         with np.errstate(divide='ignore', invalid='ignore'):
-            projected[:,0] = np.arccos(cloud[:,2] / dist)
-            projected[:,1] = np.mod(np.arctan2(cloud[:,1], cloud[:,0]) + 2*np.pi, 2*np.pi)
-            ranges[:,0] = dist
+            projected[:, 0] = np.arccos(cloud[:, 2] / dist)
+            projected[:, 1] = np.mod(np.arctan2(
+                cloud[:, 1], cloud[:, 0]) + 2*np.pi, 2*np.pi)
+            ranges[:, 0] = dist
         return projected, ranges
 
-    def __convertSphericalToEuclidean(self, spherical, invert = False):
+    def __convertSphericalToEuclidean(self, spherical, invert=False):
         cart_sphere = np.zeros([len(spherical), 3])
 
         # CUSTOM: For some reason the projection need to be inverted here to nicely fit the sph images.
         # Let's see if other datasets require the same modification
-        cart_sphere[:,0] = np.multiply(np.sin(spherical[:,0]), np.cos(spherical[:,1]))
-        cart_sphere[:,1] = np.multiply(np.sin(spherical[:,0]), np.sin(spherical[:,1]))
-        cart_sphere[:,2] = np.cos(spherical[:,0])
+        cart_sphere[:, 0] = np.multiply(
+            np.sin(spherical[:, 0]), np.cos(spherical[:, 1]))
+        cart_sphere[:, 1] = np.multiply(
+            np.sin(spherical[:, 0]), np.sin(spherical[:, 1]))
+        cart_sphere[:, 2] = np.cos(spherical[:, 0])
         if invert:
             cart_sphere = -cart_sphere
         mask = np.isnan(cart_sphere)
@@ -116,9 +122,11 @@ class Sphere:
         return cart_sphere
 
     def __convertEuclideanToSpherical(self, euclidean):
-      sphere = np.zeros([len(euclidean), 2])
-      dist = np.sqrt(np.power(sph_image_cart[:,1],2) + np.power(sph_image_cart[:,2],2) + np.power(sph_image_cart[:,3],2))
-      sphere[:,0] = np.arccos()
+        sphere = np.zeros([len(euclidean), 2])
+        dist = np.sqrt(np.power(sph_image_cart[:, 1], 2) + np.power(
+            sph_image_cart[:, 2], 2) + np.power(sph_image_cart[:, 3], 2))
+        sphere[:, 0] = np.arccos()
+
 
 if __name__ == "__main__":
     ds = DataSource("/media/scratch/berlukas/spherical/training")

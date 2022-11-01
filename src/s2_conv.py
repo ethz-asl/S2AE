@@ -1,3 +1,5 @@
+# from: https://github.com/jonkhler/s2cnn
+
 # pylint: disable=C,R,E1101
 import math
 import torch
@@ -8,6 +10,7 @@ from s2cnn.soft.s2_fft import S2_fft_real
 from s2cnn.soft.so3_fft import SO3_ifft_real
 from s2cnn import s2_mm
 from s2cnn import s2_rft
+
 
 class S2Convolution(Module):
     def __init__(self, nfeature_in, nfeature_out, b_in, b_out, b_inverse, grid, device='cuda:0'):
@@ -25,8 +28,11 @@ class S2Convolution(Module):
         self.b_out = b_out
         self.b_inverse = b_inverse
         self.grid = grid
-        self.kernel = Parameter(torch.empty(nfeature_in, nfeature_out, len(grid)).uniform_(-1, 1).to(device))
-        self.scaling = 1. / math.sqrt(len(self.grid) * self.nfeature_in * (self.b_out ** 4.) / (self.b_in ** 2.))
+        self.kernel = Parameter(torch.empty(
+            nfeature_in, nfeature_out, len(grid)).uniform_(-1, 1).to(device))
+        self.scaling = 1. / \
+            math.sqrt(len(self.grid) * self.nfeature_in *
+                      (self.b_out ** 4.) / (self.b_in ** 2.))
         self.bias = Parameter(torch.zeros(1, nfeature_out, 1, 1, 1).to(device))
 
     def forward(self, x):  # pylint: disable=W
@@ -39,15 +45,19 @@ class S2Convolution(Module):
         assert x.size(1) == self.nfeature_in
         assert x.size(2) == 2 * self.b_in
         assert x.size(3) == 2 * self.b_in
-        x = S2_fft_real.apply(x, self.b_out)  # [l * m, batch, feature_in, complex]
-        y = s2_rft(self.kernel * self.scaling, self.b_out, self.grid)  # [l * m, feature_in, feature_out, complex]
+        # [l * m, batch, feature_in, complex]
+        x = S2_fft_real.apply(x, self.b_out)
+        # [l * m, feature_in, feature_out, complex]
+        y = s2_rft(self.kernel * self.scaling, self.b_out, self.grid)
 
         z = s2_mm(x, y)  # [l * m * n, batch, feature_out, complex]
-        z = SO3_ifft_real.apply(z, self.b_inverse)  # [batch, feature_out, beta, alpha, gamma]
+        # [batch, feature_out, beta, alpha, gamma]
+        z = SO3_ifft_real.apply(z, self.b_inverse)
 
         z = z + self.bias
 
         return z
+
 
 if __name__ == "__main__":
     b_in = 50

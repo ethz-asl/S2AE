@@ -1,3 +1,5 @@
+# from: https://github.com/jonkhler/s2cnn
+
 # pylint: disable=C,R,E1101
 import math
 import torch
@@ -7,6 +9,7 @@ from torch.nn.modules import Module
 from s2cnn.soft.so3_fft import SO3_ifft_real, SO3_fft_real
 from s2cnn import s2_mm, so3_mm
 from s2cnn import s2_rft, so3_rft
+
 
 class SO3Convolution(Module):
     def __init__(self, nfeature_in, nfeature_out, b_in, b_out, b_inverse, grid, device='cuda:0'):
@@ -24,14 +27,17 @@ class SO3Convolution(Module):
         self.b_out = b_out
         self.b_inverse = b_inverse
         self.grid = grid
-        self.kernel = Parameter(torch.empty(nfeature_in, nfeature_out, len(grid)).uniform_(-1, 1).to(device))
+        self.kernel = Parameter(torch.empty(
+            nfeature_in, nfeature_out, len(grid)).uniform_(-1, 1).to(device))
         self.bias = Parameter(torch.zeros(1, nfeature_out, 1, 1, 1).to(device))
 
         # When useing ADAM optimizer, the variance of each componant of the gradient
         # is normalized by ADAM around 1.
         # Then it is suited to have parameters of order one.
         # Therefore the scaling, needed for the proper forward propagation, is done "outside" of the parameters
-        self.scaling = 1. / math.sqrt(len(self.grid) * self.nfeature_in * (self.b_out ** 3.) / (self.b_in ** 3.))
+        self.scaling = 1. / \
+            math.sqrt(len(self.grid) * self.nfeature_in *
+                      (self.b_out ** 3.) / (self.b_in ** 3.))
 
     def forward(self, x):  # pylint: disable=W
         '''
@@ -43,19 +49,23 @@ class SO3Convolution(Module):
         assert x.size(3) == 2 * self.b_in
         assert x.size(4) == 2 * self.b_in
 
-        x = SO3_fft_real.apply(x, self.b_out)  # [l * m * n, batch, feature_in, complex]
-        y = so3_rft(self.kernel * self.scaling, self.b_out, self.grid)  # [l * m * n, feature_in, feature_out, complex]
+        # [l * m * n, batch, feature_in, complex]
+        x = SO3_fft_real.apply(x, self.b_out)
+        # [l * m * n, feature_in, feature_out, complex]
+        y = so3_rft(self.kernel * self.scaling, self.b_out, self.grid)
         assert x.size(0) == y.size(0)
         assert x.size(2) == y.size(1)
         z = so3_mm(x, y)  # [l * m * n, batch, feature_out, complex]
         assert z.size(0) == x.size(0)
         assert z.size(1) == x.size(1)
         assert z.size(2) == y.size(2)
-        z = SO3_ifft_real.apply(z, self.b_inverse)  # [batch, feature_out, beta, alpha, gamma]
+        # [batch, feature_out, beta, alpha, gamma]
+        z = SO3_ifft_real.apply(z, self.b_inverse)
 
         z = z + self.bias
 
         return z
+
 
 if __name__ == "__main__":
     b_in = 50
